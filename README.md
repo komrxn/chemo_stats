@@ -1,494 +1,299 @@
-# 📊 KKH's ANOVA/PCA Analysis Platform
+<p align="center">
+  <img src="https://img.shields.io/badge/Chemostats-v2.0-00d4aa?style=for-the-badge&logo=data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHdpZHRoPSIyNCIgaGVpZ2h0PSIyNCIgdmlld0JveD0iMCAwIDI0IDI0IiBmaWxsPSJub25lIiBzdHJva2U9IndoaXRlIiBzdHJva2Utd2lkdGg9IjIiIHN0cm9rZS1saW5lY2FwPSJyb3VuZCIgc3Ryb2tlLWxpbmVqb2luPSJyb3VuZCI+PHBhdGggZD0iTTkgMyBoNiIvPjxwYXRoIGQ9Ik0xMiAzdjE4Ii8+PHBhdGggZD0iTTQgMjFoMTYiLz48cGF0aCBkPSJNOCAxMmw0LTQgNCA0Ii8+PC9zdmc+" alt="Chemostats"/>
+</p>
 
-**[English](#english)** | **[Русский](#русский)**
+<h1 align="center">🧪 Chemostats v2.0</h1>
+
+<p align="center">
+  <strong>Платформа статистического анализа для метаболомики и биоинформатики</strong>
+</p>
+
+<p align="center">
+  <a href="#features">Features</a> •
+  <a href="#quick-start">Quick Start</a> •
+  <a href="#docker">Docker</a> •
+  <a href="#tech-stack">Tech Stack</a> •
+  <a href="#api">API</a>
+</p>
+
+<p align="center">
+  <img src="https://img.shields.io/badge/React-18-61DAFB?style=flat-square&logo=react" alt="React"/>
+  <img src="https://img.shields.io/badge/FastAPI-0.100+-009688?style=flat-square&logo=fastapi" alt="FastAPI"/>
+  <img src="https://img.shields.io/badge/TypeScript-5.0-3178C6?style=flat-square&logo=typescript" alt="TypeScript"/>
+  <img src="https://img.shields.io/badge/Python-3.11-3776AB?style=flat-square&logo=python" alt="Python"/>
+  <img src="https://img.shields.io/badge/Docker-Ready-2496ED?style=flat-square&logo=docker" alt="Docker"/>
+</p>
 
 ---
 
-<a name="english"></a>
-## 🇬🇧 English
+## ✨ Features
 
-### What is this?
-Full-stack web platform for statistical analysis (ANOVA & PCA) with interactive visualization.
+<table>
+<tr>
+<td width="50%">
 
-**Stack:** Python FastAPI + React TypeScript
+### 📊 ANOVA Analysis
+- One-way ANOVA с множественными коррекциями
+- **Bonferroni** & **Benjamini-Hochberg** FDR
+- Интерактивные **Box Plots** (Plotly.js)
+- Экспорт в **Excel + PNG**
+
+</td>
+<td width="50%">
+
+### 🔬 PCA Analysis
+- Principal Component Analysis
+- Auto-scaling, Mean-centering, Pareto
+- Score & Loading plots *(coming soon)*
+- Variance explained visualization
+
+</td>
+</tr>
+<tr>
+<td>
+
+### 🌍 Localization
+- 🇬🇧 English
+- 🇷🇺 Русский  
+- 🇺🇿 O'zbekcha
+
+</td>
+<td>
+
+### 📁 File Manager
+- Drag & drop upload
+- Nested folders
+- CSV / Excel support
+- Smart data detection
+
+</td>
+</tr>
+</table>
 
 ---
 
-### 🚀 Quick Start
+## 🚀 Quick Start
 
-#### Step 1: Install Backend
+### Prerequisites
+- **Node.js** 18+
+- **Python** 3.11+
+- **Docker** (optional)
+
+### Local Development
 
 ```bash
-cd kkh-analysis/backend
-python3 -m venv venv
-source venv/bin/activate
+# Clone
+git clone https://github.com/your-repo/kkh-analysis.git
+cd kkh-analysis
+
+# Backend
+cd backend
+python -m venv venv
+source venv/bin/activate  # Windows: venv\Scripts\activate
 pip install -r requirements.txt
-```
+uvicorn app:app --reload --port 8000
 
-#### Step 2: Install Frontend
-
-```bash
-cd kkh-analysis/frontend
+# Frontend (new terminal)
+cd frontend
 npm install
-```
-
-#### Step 3: Run Backend (Terminal 1)
-
-```bash
-cd kkh-analysis/backend
-source venv/bin/activate
-python app.py
-```
-
-✅ Backend running at: **http://localhost:8000**
-
-#### Step 4: Run Frontend (Terminal 2)
-
-```bash
-cd kkh-analysis/frontend
 npm run dev
 ```
 
-✅ Frontend running at: **http://localhost:8080**
+Open **http://localhost:3000**
 
 ---
 
-### 🧪 Test
+## 🐳 Docker
 
-1. Open http://localhost:8080
-2. Upload test file: `kkh-analysis/backend/test_data_example.csv`
-3. Select ANOVA or PCA
-4. Click "Run Analysis"
+### One Command Deploy
 
----
-
-### 📁 Data Format
-
-CSV/Excel file:
-```csv
-Class,Variable_1,Variable_2,Variable_3
-1,12.5,18.3,25.7
-1,11.8,19.1,24.9
-2,25.4,32.8,15.2
-```
-
-**Supported formats:**
-- First column: classes - **integers (1,2,3)** or **letters (A,B,C)** or **strings (Group1, Group2)**
-- Other columns: variables (numbers only)
-- Non-numeric columns (like dates, text) are automatically skipped
-- Empty rows are automatically removed
-- Minimum: 3 samples, 2 variables
-
----
-
-### 🎯 Features
-
-**ANOVA:**
-- One-Way ANOVA (F-test)
-- Bonferroni correction
-- Benjamini-Hochberg FDR
-- Effect size (η²)
-- Boxplots
-
-**PCA:**
-- 3 scaling methods (auto/mean/pareto)
-- Scores plot (PC1 vs PC2)
-- Scree plot
-- Explained variance
-
----
-
-### 🛠️ Troubleshooting
-
-**Port 8000 is busy:**
 ```bash
-lsof -ti:8000 | xargs kill -9
+docker compose up -d --build
 ```
 
-**Frontend errors:**
-```bash
-cd kkh-analysis/frontend
-rm -rf node_modules package-lock.json
-npm install
-```
+| Service | URL |
+|---------|-----|
+| Frontend | http://localhost |
+| Backend API | http://localhost:8000 |
+| API Docs | http://localhost:8000/docs |
 
-**Backend errors:**
+### Commands
+
 ```bash
-cd kkh-analysis/backend
-source venv/bin/activate
-pip install --upgrade -r requirements.txt
+docker compose logs -f          # View logs
+docker compose down             # Stop all
+docker compose restart backend  # Restart service
 ```
 
 ---
 
-### 📚 API Documentation
+## 🛠 Tech Stack
 
-After starting backend: http://localhost:8000/docs
+### Frontend
+| Technology | Purpose |
+|------------|---------|
+| React 18 | UI Framework |
+| TypeScript | Type Safety |
+| Vite | Build Tool |
+| Tailwind CSS | Styling |
+| Zustand | State Management |
+| Plotly.js | Interactive Charts |
+| Framer Motion | Animations |
+
+### Backend
+| Technology | Purpose |
+|------------|---------|
+| FastAPI | API Framework |
+| Pandas | Data Processing |
+| SciPy | Statistical Analysis |
+| NumPy | Numerical Computing |
+| Uvicorn | ASGI Server |
 
 ---
 
-### 📊 Project Structure
+## 📡 API
+
+### Endpoints
+
+| Method | Endpoint | Description |
+|--------|----------|-------------|
+| `POST` | `/api/preview` | Parse & preview file |
+| `POST` | `/api/anova` | Run ANOVA analysis |
+| `POST` | `/api/pca` | Run PCA analysis |
+
+### Example: ANOVA Request
+
+```bash
+curl -X POST http://localhost:8000/api/anova \
+  -F "file=@data.csv" \
+  -F "class_column=Group" \
+  -F "fdr_threshold=0.05"
+```
+
+### Response Structure
+
+```json
+{
+  "results": [
+    {
+      "variable": "Metabolite_1",
+      "pValue": 0.0023,
+      "fdr": 0.0115,
+      "bonferroni": 0.0921,
+      "benjamini": true
+    }
+  ],
+  "summary": {
+    "total_variables": 150,
+    "benjamini_significant": 23,
+    "bonferroni_significant": 8
+  },
+  "boxplot_data": { ... }
+}
+```
+
+---
+
+## 📦 Export
+
+Export generates a **ZIP archive** containing:
+
+```
+ANOVA_Results_2024-01-15/
+├── ANOVA_Results.xlsx      # Full statistics table
+├── boxplots/
+│   ├── Metabolite_1.png    # High-res box plots
+│   ├── Metabolite_2.png
+│   └── ...
+├── original_data.csv       # Source file
+└── README.txt              # Analysis metadata
+```
+
+---
+
+## 🗂 Project Structure
 
 ```
 kkh-analysis/
-├── backend/              # Python FastAPI
-│   ├── app.py           # Main app
-│   ├── services/        # ANOVA & PCA logic
-│   ├── utils/           # File parsing
+├── backend/
+│   ├── app.py              # FastAPI application
+│   ├── services/
+│   │   ├── anova.py        # ANOVA logic
+│   │   └── pca.py          # PCA logic
+│   ├── utils/
+│   │   └── file_parser.py  # Data parsing
+│   ├── Dockerfile
 │   └── requirements.txt
-└── frontend/            # React TypeScript
-    ├── src/
-    │   ├── pages/       # Main pages
-    │   └── components/  # UI components
-    └── package.json
-```
-
----
-
-<a name="русский"></a>
-## 🇷🇺 Русский
-
-### Что это?
-Веб-платформа для статистического анализа (ANOVA и PCA) с интерактивной визуализацией.
-
-**Стек:** Python FastAPI + React TypeScript
-
----
-
-### 🚀 Быстрый запуск
-
-#### Шаг 1: Установить Backend
-
-```bash
-cd kkh-analysis/backend
-python3 -m venv venv
-source venv/bin/activate
-pip install -r requirements.txt
-```
-
-**Что установится:** FastAPI, NumPy, Pandas, SciPy, Scikit-learn  
-**Время:** ~2 минуты  
-**Размер:** ~150 MB
-
-#### Шаг 2: Установить Frontend
-
-```bash
-cd kkh-analysis/frontend
-npm install
-```
-
-**Что установится:** React, TypeScript, Vite, Tailwind CSS, shadcn/ui  
-**Время:** ~3 минуты  
-**Размер:** ~500 MB
-
-#### Шаг 3: Запустить Backend (Терминал 1)
-
-```bash
-cd kkh-analysis/backend
-source venv/bin/activate
-python app.py
-```
-
-✅ Backend запущен: **http://localhost:8000**
-
-**Или быстро:**
-```bash
-cd kkh-analysis/backend
-./start.sh
-```
-
-#### Шаг 4: Запустить Frontend (Терминал 2)
-
-```bash
-cd kkh-analysis/frontend
-npm run dev
-```
-
-✅ Frontend запущен: **http://localhost:8080**
-
----
-
-### 🧪 Проверка
-
-1. Откройте http://localhost:8080
-2. Загрузите тестовый файл: `kkh-analysis/backend/test_data_example.csv`
-3. Выберите метод: ANOVA или PCA
-4. Нажмите "Run Analysis"
-5. Увидите результаты! 🎉
-
-**Проверка через curl:**
-```bash
-curl http://localhost:8000/health
-# Ответ: {"status":"healthy","service":"analysis-backend"}
-```
-
----
-
-### 📁 Формат данных
-
-CSV/Excel файл:
-```csv
-Class,Variable_1,Variable_2,Variable_3
-1,12.5,18.3,25.7
-1,11.8,19.1,24.9
-2,25.4,32.8,15.2
-```
-
-**Поддерживаемые форматы:**
-- Первая колонка: классы - **цифры (1,2,3)** или **буквы (A,B,C)** или **строки (Group1, Group2)**
-- Остальные колонки: переменные (только числа)
-- Нечисловые колонки (даты, текст) автоматически пропускаются
-- Пустые строки автоматически удаляются
-- Минимум: 3 образца, 2 переменные
-
----
-
-### 🎯 Возможности
-
-**ANOVA:**
-- One-Way ANOVA (F-тест)
-- Bonferroni коррекция
-- Benjamini-Hochberg FDR ⭐ (рекомендуется)
-- Effect size (η²)
-- Boxplot графики
-
-**PCA:**
-- 3 метода масштабирования (auto/mean/pareto)
-- Scores plot (PC1 vs PC2)
-- Scree plot (объясненная дисперсия)
-- Cumulative variance
-- Loadings matrix
-
----
-
-### 🛠️ Решение проблем
-
-**Port 8000 занят:**
-```bash
-lsof -ti:8000 | xargs kill -9
-```
-
-**Frontend не работает:**
-```bash
-cd kkh-analysis/frontend
-
-# Проверить версию Node.js (нужна 18+)
-node --version
-
-# Переустановить зависимости
-rm -rf node_modules package-lock.json
-npm cache clean --force
-npm install
-```
-
-**Backend не работает:**
-```bash
-cd kkh-analysis/backend
-source venv/bin/activate
-pip install --upgrade pip
-pip install -r requirements.txt
-```
-
-**Frontend загружается, но не подключается к Backend:**
-1. Проверьте что Backend запущен: `curl http://localhost:8000/health`
-2. Откройте Console (F12) и посмотрите ошибки
-3. Убедитесь что порт 8000 не занят
-
----
-
-### 📝 Логи
-
-**Backend логи:**
-```bash
-tail -f kkh-analysis/backend/analysis.log
-```
-
-**Frontend логи:**  
-Откройте Console в браузере (F12)
-
----
-
-### 📚 Документация API
-
-После запуска backend: **http://localhost:8000/docs**
-
-Интерактивная документация Swagger UI с возможностью тестировать API прямо в браузере.
-
----
-
-### 📊 Структура проекта
-
-```
-Dad's/
-├── README.md                  # Этот файл
 │
-├── bkh/                       # Оригинальный MATLAB код (reference)
-│   ├── anova_bkh/
-│   ├── pca_bkh/
-│   └── essential_bkh/
+├── frontend/
+│   ├── src/
+│   │   ├── components/
+│   │   │   ├── analysis/   # Analysis components
+│   │   │   ├── layout/     # Layout components
+│   │   │   └── ui/         # UI primitives
+│   │   ├── lib/
+│   │   │   ├── i18n/       # Translations (en/ru/uz)
+│   │   │   ├── api.ts      # API client
+│   │   │   └── export.ts   # Export logic
+│   │   └── store/          # Zustand store
+│   ├── Dockerfile
+│   └── package.json
 │
-└── kkh-analysis/              # Веб-платформа
-    ├── backend/               # Python Backend
-    │   ├── app.py            # FastAPI приложение
-    │   ├── services/
-    │   │   ├── anova.py      # ANOVA логика
-    │   │   └── pca.py        # PCA логика
-    │   ├── utils/
-    │   │   ├── file_parser.py        # Парсинг CSV/Excel
-    │   │   └── preprocessing.py      # Scaling методы
-    │   ├── requirements.txt
-    │   ├── start.sh          # Скрипт быстрого запуска
-    │   └── test_data_example.csv
-    │
-    └── frontend/              # React Frontend
-        ├── src/
-        │   ├── pages/
-        │   │   └── Index.tsx  # Главная страница
-        │   ├── components/
-        │   │   ├── FileUpload.tsx
-        │   │   ├── AnalysisConfig.tsx
-        │   │   ├── ResultsTable.tsx
-        │   │   ├── InteractiveBoxplot.tsx
-        │   │   └── PCAResults.tsx
-        │   └── hooks/
-        │       └── useLanguage.tsx    # EN/RU переводы
-        └── package.json
+├── docker-compose.yml
+└── README.md
 ```
 
 ---
 
-### 🔥 Быстрый запуск одной командой
+## 🔧 Configuration
 
-**macOS/Linux:**
-```bash
-# Backend
-cd kkh-analysis/backend && ./start.sh &
+### Environment Variables
 
-# Frontend
-cd kkh-analysis/frontend && npm run dev
+| Variable | Default | Description |
+|----------|---------|-------------|
+| `VITE_API_URL` | `/api` | Backend API URL |
+| `PORT` | `8000` | Backend port |
+
+### Vite Proxy (Development)
+
+```typescript
+// vite.config.ts
+proxy: {
+  '/api': {
+    target: 'http://127.0.0.1:8000',
+    changeOrigin: true,
+  }
+}
 ```
 
 ---
 
-### 📈 Производительность
+## 📋 Roadmap
 
-Тесты на MacBook M1:
-
-| Метод | Samples | Variables | Время |
-|-------|---------|-----------|-------|
-| ANOVA | 100 | 1000 | 0.8s |
-| ANOVA | 500 | 5000 | 4.2s |
-| PCA | 100 | 1000 | 0.3s |
-| PCA | 500 | 5000 | 1.1s |
-
----
-
-### 🧬 Алгоритмы
-
-**ANOVA:**
-- F-test через `scipy.stats.f_oneway`
-- Bonferroni: `α_adj = α / n_tests`
-- Benjamini-Hochberg: `statsmodels.multipletests`
-- Effect size: η² = SS_between / SS_total
-
-**PCA:**
-- SVD-based: `sklearn.decomposition.PCA`
-- Scaling:
-  - **auto**: (X - μ) / σ (Z-score)
-  - **mean**: X - μ (mean centering)
-  - **pareto**: (X - μ) / √σ (Pareto)
+- [x] ANOVA with FDR correction
+- [x] Interactive Box Plots
+- [x] Multi-language support (EN/RU/UZ)
+- [x] Excel + PNG export
+- [x] Docker deployment
+- [ ] PCA Score/Loading plots
+- [ ] AI Assistant integration
+- [ ] Batch analysis
+- [ ] Cloud storage
 
 ---
 
-### 🎨 Скриншоты функционала
+## 👥 Authors
 
-**ANOVA Results:**
-- Таблица с p-values, FDR, Bonferroni
-- Цветовая индикация значимости
-- Boxplot графики для топ-4 переменных
-
-**PCA Results:**
-- Scores plot с группировкой по цветам
-- Scree plot (bar chart)
-- Cumulative variance (line chart)
+**KKH Analysis Team**
 
 ---
 
-### 🌐 Технологии
+## 📄 License
 
-**Backend:**
-- Python 3.10+
-- FastAPI (REST API)
-- NumPy (numerical computing)
-- Pandas (data manipulation)
-- SciPy (statistical tests)
-- Scikit-learn (PCA)
-- Statsmodels (FDR corrections)
-
-**Frontend:**
-- React 18
-- TypeScript 5
-- Vite (build tool)
-- Tailwind CSS (styling)
-- shadcn/ui (components)
-- Recharts (charts)
-- React Router (routing)
+MIT License - feel free to use for research and education.
 
 ---
 
-### 🔐 Production Deploy
-
-**Backend (Railway/Render):**
-```bash
-cd kkh-analysis/backend
-pip install gunicorn
-gunicorn app:app --workers 4 --worker-class uvicorn.workers.UvicornWorker --bind 0.0.0.0:8000
-```
-
-**Frontend (Vercel/Netlify):**
-```bash
-cd kkh-analysis/frontend
-npm run build
-# Deploy dist/ folder
-```
-
----
-
-### 📞 Support
-
-**Проблемы с установкой?**
-1. Проверьте версии: `python3 --version` (нужна 3.10+), `node --version` (нужна 18+)
-2. Попробуйте очистить кеш: `npm cache clean --force`
-3. Переустановите зависимости заново
-
-**Ошибки при анализе?**
-1. Проверьте формат файла (первая колонка = классы)
-2. Убедитесь что минимум 3 образца и 2 переменные
-3. Посмотрите логи: `tail -f backend/analysis.log`
-
----
-
-### ✅ Финальный чеклист
-
-Перед использованием убедитесь:
-- [ ] Python 3.10+ установлен
-- [ ] Node.js 18+ установлен
-- [ ] Backend зависимости установлены (`pip install -r requirements.txt`)
-- [ ] Frontend зависимости установлены (`npm install`)
-- [ ] Backend запущен и отвечает на `/health`
-- [ ] Frontend запущен и открывается в браузере
-- [ ] Тестовый файл успешно загружается
-
----
-
-**Version:** 1.0.0  
-**Author:** Senior Engineer  
-**License:** Proprietary
-
----
-
-## 🎉 Ready to Use!
-
-**English:** Open http://localhost:8080 and start analyzing!  
-**Русский:** Откройте http://localhost:8080 и начните анализ!
-
+<p align="center">
+  <sub>Built with ❤️ for metabolomics research</sub>
+</p>
