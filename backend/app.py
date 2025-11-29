@@ -7,12 +7,14 @@ import os
 from contextlib import asynccontextmanager
 from typing import Any
 
-from fastapi import FastAPI, File, Form, HTTPException, UploadFile
+from fastapi import Body, FastAPI, File, Form, HTTPException, UploadFile
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi.responses import StreamingResponse
 
 from services.anova import AnovaAnalyzer
 from services.pca import PCAAnalyzer
-from utils.file_parser import parse_uploaded_file
+from services.export import generate_anova_excel
+from utils.file_parser import parse_uploaded_file, preview_file
 
 # Configure logging
 logging.basicConfig(
@@ -67,9 +69,40 @@ async def health_check() -> dict[str, str]:
     return {"status": "healthy", "service": "analysis-backend"}
 
 
+@app.post("/api/preview")
+async def preview_uploaded_file(
+    file: UploadFile = File(...)
+) -> dict[str, Any]:
+    """
+    Preview file structure WITHOUT running analysis
+    Detects DATA trigger and returns metadata columns
+    
+    Args:
+        file: CSV/Excel file
+    
+    Returns:
+        File structure information
+    """
+    try:
+        logger.info(f"📋 Preview File: {file.filename}")
+        
+        preview_data = await preview_file(file)
+        
+        logger.info(f"✅ Preview Complete - Trigger: {preview_data['trigger_found']}, "
+                   f"Metadata: {len(preview_data['metadata_columns'])}, "
+                   f"Variables: {preview_data['num_variables']}")
+        
+        return preview_data
+        
+    except Exception as e:
+        logger.error(f"❌ Preview Failed: {str(e)}", exc_info=True)
+        raise HTTPException(status_code=500, detail=f"Preview failed: {str(e)}")
+
+
 @app.post("/api/analyze/anova")
 async def analyze_anova(
     file: UploadFile = File(...),
+    class_column: str = Form(...),  # REQUIRED!
     fdr_threshold: float = Form(0.05),
     design_label: str = Form("Treatment"),
     plot_option: int = Form(3),
@@ -79,6 +112,7 @@ async def analyze_anova(
     
     Args:
         file: CSV/Excel file (samples × variables)
+        class_column: Name of column to use as classes (REQUIRED!)
         fdr_threshold: FDR threshold (default: 0.05)
         design_label: Design label name
         plot_option: Plotting option (0-4)
@@ -87,17 +121,22 @@ async def analyze_anova(
         ANOVA results with p-values, FDR, Bonferroni, and boxplot data
     """
     try:
-        logger.info(f"📊 ANOVA Analysis Started - File: {file.filename}")
+        logger.info(f"📊 ANOVA Analysis Started - File: {file.filename}, Class: {class_column}")
         
-        # Parse file
-        data, classes, var_names = await parse_uploaded_file(file)
+        # Parse file with specified class column
+        data, classes, var_names = await parse_uploaded_file(file, class_column)
         logger.info(f"✅ Data parsed: {data.shape[0]} samples × {data.shape[1]} variables")
         
         # Run ANOVA
         analyzer = AnovaAnalyzer(fdr_threshold=fdr_threshold)
         results = analyzer.analyze(data, classes, design_label, plot_option, var_names)
         
-        logger.info(f"✅ ANOVA Complete - {len(results['significant_variables'])} significant vars")
+        # Add original data for export
+        results['original_data'] = data.tolist()
+        results['classes'] = classes.tolist()
+        results['variable_names'] = var_names
+        
+        logger.info(f"✅ ANOVA Complete - {len(results.get('significant_variables', []))} significant vars")
         return results
         
     except Exception as e:
@@ -141,6 +180,61 @@ async def analyze_pca(
     except Exception as e:
         logger.error(f"❌ PCA Failed: {str(e)}", exc_info=True)
         raise HTTPException(status_code=500, detail=f"Analysis failed: {str(e)}")
+
+
+@app.post("/api/export/anova")
+async def export_anova(
+    export_data: dict = Body(...)
+) -> StreamingResponse:
+    """
+    Export ANOVA results to Excel file (5 sheets)
+    
+    Args:
+        export_data: Dictionary containing all results data
+    
+    Returns:
+        Excel file download
+    """
+    try:
+        logger.info("📥 Excel Export Started")
+        
+        # Validate required fields
+        required_fields = ['results', 'multicomparison', 'global_stats', 'group_stats', 
+                          'original_data', 'classes', 'variable_names']
+        
+        missing = [f for f in required_fields if f not in export_data]
+        if missing:
+            raise ValueError(f"Missing required fields: {missing}")
+        
+        # Convert lists to numpy arrays
+        import numpy as np
+        data = np.array(export_data['original_data'])
+        classes = np.array(export_data['classes'])
+        
+        # Generate Excel file
+        excel_file = generate_anova_excel(
+            results=export_data['results'],
+            multicomp=export_data['multicomparison'],
+            global_stats=export_data['global_stats'],
+            group_stats=export_data['group_stats'],
+            data=data,
+            classes=classes,
+            var_names=export_data['variable_names']
+        )
+        
+        logger.info("✅ Excel Export Complete")
+        
+        return StreamingResponse(
+            excel_file,
+            media_type="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+            headers={
+                "Content-Disposition": "attachment; filename=ANOVA_results.xlsx"
+            }
+        )
+        
+    except Exception as e:
+        logger.error(f"❌ Excel Export Failed: {str(e)}", exc_info=True)
+        raise HTTPException(status_code=500, detail=f"Export failed: {str(e)}")
 
 
 if __name__ == "__main__":

@@ -20,7 +20,7 @@ echo -e "${YELLOW}📦 Step 1: Installing dependencies...${NC}"
 
 # Update system
 sudo apt update
-sudo apt install -y python3.11 python3.11-venv python3-pip nginx git curl
+sudo apt install -y python3 python3-venv python3-pip nginx git curl
 
 # Install Node.js 20.x
 if ! command -v node &> /dev/null; then
@@ -61,7 +61,7 @@ echo -e "${YELLOW}🐍 Step 3: Setting up Backend...${NC}"
 cd $PROJECT_DIR/backend
 
 # Create virtual environment
-python3.11 -m venv venv
+python3 -m venv venv
 source venv/bin/activate
 
 # Install dependencies
