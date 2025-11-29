@@ -4,7 +4,7 @@
 
 ### 1. Build and Run
 ```bash
-cd kkh-analysis
+cd chemo_stats
 docker-compose up -d --build
 ```
 
@@ -25,8 +25,8 @@ docker-compose down
 
 1. **Clone repo on server**:
 ```bash
-git clone <your-repo> /opt/kkh-analysis
-cd /opt/kkh-analysis
+git clone <your-repo> /opt/chemo_stats
+cd /opt/chemo_stats
 ```
 
 2. **Build and run**:
