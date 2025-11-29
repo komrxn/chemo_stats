@@ -293,7 +293,7 @@ export function AnalysisSettingsDialog({
                     <Input
                       type="number"
                       value={fdrThreshold}
-                      onChange={(e) => setFdrThreshold(e.target.value)}
+                      onChange={(e: React.ChangeEvent<HTMLInputElement>) => setFdrThreshold(e.target.value)}
                       step="0.01"
                       min="0"
                       max="1"
@@ -305,7 +305,7 @@ export function AnalysisSettingsDialog({
                     <FieldLabel icon={FolderOpen} label={t('analysis.designLabel')} />
                     <Input
                       value={designLabel}
-                      onChange={(e) => setDesignLabel(e.target.value)}
+                      onChange={(e: React.ChangeEvent<HTMLInputElement>) => setDesignLabel(e.target.value)}
                       placeholder="Treatment"
                       className="h-12"
                     />
@@ -372,7 +372,7 @@ export function AnalysisSettingsDialog({
                   <Input
                     type="number"
                     value={numPcs}
-                    onChange={(e) => setNumPcs(e.target.value)}
+                    onChange={(e: React.ChangeEvent<HTMLInputElement>) => setNumPcs(e.target.value)}
                     min="1"
                     max="10"
                     className="h-12 font-mono"
@@ -382,7 +382,7 @@ export function AnalysisSettingsDialog({
                 {/* Scaling Method */}
                 <div className="space-y-2">
                   <FieldLabel icon={TrendingUp} label={t('analysis.scalingMethod')} />
-                  <Select value={scalingMethod} onValueChange={(v) => setScalingMethod(v as typeof scalingMethod)}>
+                  <Select value={scalingMethod} onValueChange={(v: string) => setScalingMethod(v as typeof scalingMethod)}>
                     <SelectTrigger className="h-12">
                       <SelectValue />
                     </SelectTrigger>
@@ -414,7 +414,7 @@ export function AnalysisSettingsDialog({
                   <FieldLabel icon={FolderOpen} label="Метка дизайна" />
                   <Input
                     value={designLabel}
-                    onChange={(e) => setDesignLabel(e.target.value)}
+                    onChange={(e: React.ChangeEvent<HTMLInputElement>) => setDesignLabel(e.target.value)}
                     placeholder="Treatment"
                     className="h-12"
                   />

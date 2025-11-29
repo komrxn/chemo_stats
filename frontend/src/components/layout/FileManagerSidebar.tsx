@@ -67,7 +67,7 @@ export function FileManagerSidebar() {
           <Input
             placeholder={t('app.search')}
             value={searchQuery}
-            onChange={(e) => setSearchQuery(e.target.value)}
+            onChange={(e: React.ChangeEvent<HTMLInputElement>) => setSearchQuery(e.target.value)}
             className="pl-9 h-8 text-sm bg-surface"
           />
         </div>
@@ -230,10 +230,10 @@ function ProjectItem({
           <div className="flex items-center gap-1 flex-1" onClick={(e) => e.stopPropagation()}>
             <Input
               value={editName}
-              onChange={(e) => setEditName(e.target.value)}
+              onChange={(e: React.ChangeEvent<HTMLInputElement>) => setEditName(e.target.value)}
               className="h-6 text-sm px-1"
               autoFocus
-              onKeyDown={(e) => {
+              onKeyDown={(e: React.KeyboardEvent<HTMLInputElement>) => {
                 if (e.key === 'Enter') handleSaveRename()
                 if (e.key === 'Escape') setEditing(false)
               }}
@@ -451,10 +451,10 @@ function FolderItem({
           <div className="flex items-center gap-1 flex-1" onClick={(e) => e.stopPropagation()}>
             <Input
               value={editName}
-              onChange={(e) => setEditName(e.target.value)}
+              onChange={(e: React.ChangeEvent<HTMLInputElement>) => setEditName(e.target.value)}
               className="h-5 text-xs px-1"
               autoFocus
-              onKeyDown={(e) => {
+              onKeyDown={(e: React.KeyboardEvent<HTMLInputElement>) => {
                 if (e.key === 'Enter') handleSaveRename()
                 if (e.key === 'Escape') setEditing(false)
               }}
@@ -597,10 +597,10 @@ function TableItem({ table, projectId, isActive, onSelect, folderId }: TableItem
         <div className="flex items-center gap-1 flex-1" onClick={(e) => e.stopPropagation()}>
           <Input
             value={editName}
-            onChange={(e) => setEditName(e.target.value)}
+            onChange={(e: React.ChangeEvent<HTMLInputElement>) => setEditName(e.target.value)}
             className="h-5 text-xs px-1"
             autoFocus
-            onKeyDown={(e) => {
+            onKeyDown={(e: React.KeyboardEvent<HTMLInputElement>) => {
               if (e.key === 'Enter') handleSaveRename()
               if (e.key === 'Escape') setEditing(false)
             }}

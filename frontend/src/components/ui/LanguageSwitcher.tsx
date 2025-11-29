@@ -13,7 +13,7 @@ export function LanguageSwitcher() {
   const { language, setLanguage } = useTranslation()
 
   return (
-    <Select value={language} onValueChange={(v) => setLanguage(v as Language)}>
+    <Select value={language} onValueChange={(v: string) => setLanguage(v as Language)}>
       <SelectTrigger className="w-auto h-8 gap-1.5 px-2 bg-transparent border-0">
         <Globe className="h-4 w-4 text-text-muted" />
         <SelectValue />
