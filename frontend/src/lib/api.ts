@@ -67,13 +67,46 @@ export const api = {
     return response.blob()
   },
 
-  async chat(message: string, context: AnalysisContext | null) {
+  async chat(fileId: string, message: string, fileName?: string) {
     const response = await fetch(`${API_URL}/api/chat`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ message, context }),
+      body: JSON.stringify({ 
+        file_id: fileId, 
+        message,
+        file_name: fileName 
+      }),
     })
     return handleResponse<ChatResponse>(response)
+  },
+
+  async storeAnalysisContext(fileId: string, analysisType: string, results: unknown) {
+    const formData = new FormData()
+    formData.append('file_id', fileId)
+    formData.append('analysis_type', analysisType)
+    formData.append('results', JSON.stringify(results))
+
+    const response = await fetch(`${API_URL}/api/chat/context`, {
+      method: 'POST',
+      body: formData,
+    })
+    return handleResponse<{ status: string; message: string }>(response)
+  },
+
+  async getChatHistory(fileId: string) {
+    const response = await fetch(`${API_URL}/api/chat/history/${fileId}`)
+    return handleResponse<ChatHistoryResponse>(response)
+  },
+
+  async transcribeAudio(audioBlob: Blob) {
+    const formData = new FormData()
+    formData.append('audio', audioBlob, 'audio.webm')
+
+    const response = await fetch(`${API_URL}/api/transcribe`, {
+      method: 'POST',
+      body: formData,
+    })
+    return handleResponse<{ text: string }>(response)
   },
 }
 
@@ -177,5 +210,12 @@ export interface AnalysisContext {
 
 export interface ChatResponse {
   response: string
+  file_id: string
+}
+
+export interface ChatHistoryResponse {
+  history: { role: string; content: string }[]
+  has_context: boolean
+  context_type: string | null
 }
 

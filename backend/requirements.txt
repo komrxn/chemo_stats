@@ -19,3 +19,10 @@ statsmodels==0.14.4
 # Logging & Utilities
 python-json-logger==3.1.0
 
+# AI Assistant
+openai==1.40.0
+redis==5.0.1
+
+# Audio processing
+pydub==0.25.1
+

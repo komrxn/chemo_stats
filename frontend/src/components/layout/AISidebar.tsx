@@ -1,68 +1,188 @@
 import { useState, useRef, useEffect } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
-import { Sparkles, Send, Paperclip, Mic, Loader2, User, Bot } from 'lucide-react'
-import { useAppStore, useAnalysisContext } from '@/store'
+import { 
+  Sparkles, Send, Paperclip, Mic, MicOff, Loader2, User, Bot, 
+  X, FileText, AlertCircle, CheckCircle2
+} from 'lucide-react'
+import { useActiveTable } from '@/store'
 import { useTranslation } from '@/lib/i18n'
+import { api } from '@/lib/api'
 import { Button } from '@/components/ui/Button'
 import { ScrollArea } from '@/components/ui/ScrollArea'
 import { cn } from '@/lib/utils'
-import type { ChatMessage } from '@/types'
+
+interface ChatMessage {
+  id: string
+  role: 'user' | 'assistant'
+  content: string
+  timestamp: Date
+  attachment?: { name: string; type: string }
+}
 
 export function AISidebar() {
   const { t } = useTranslation()
+  const activeTable = useActiveTable()
   const [input, setInput] = useState('')
-  const messages = useAppStore((s) => s.chatMessages)
-  const loading = useAppStore((s) => s.chatLoading)
-  const addMessage = useAppStore((s) => s.addChatMessage)
-  const setLoading = useAppStore((s) => s.setChatLoading)
-  const analysisContext = useAnalysisContext()
+  const [messages, setMessages] = useState<ChatMessage[]>([])
+  const [loading, setLoading] = useState(false)
+  const [recording, setRecording] = useState(false)
+  const [attachment, setAttachment] = useState<File | null>(null)
+  const [hasContext, setHasContext] = useState(false)
+  const [contextType, setContextType] = useState<string | null>(null)
+  
   const scrollRef = useRef<HTMLDivElement>(null)
+  const fileInputRef = useRef<HTMLInputElement>(null)
+  const mediaRecorderRef = useRef<MediaRecorder | null>(null)
+  const audioChunksRef = useRef<Blob[]>([])
 
-  // Auto-scroll to bottom
+  const fileId = activeTable?.id || 'default'
+  const fileName = activeTable?.name || 'No file'
+
+  // Load chat history when file changes
+  useEffect(() => {
+    if (activeTable?.id) {
+      loadHistory()
+    } else {
+      setMessages([])
+      setHasContext(false)
+      setContextType(null)
+    }
+  }, [activeTable?.id])
+
+  // Store context when analysis completes
+  useEffect(() => {
+    if (activeTable?.analysis?.results && activeTable.id) {
+      storeContext()
+    }
+  }, [activeTable?.analysis?.results])
+
+  // Auto-scroll
   useEffect(() => {
     if (scrollRef.current) {
       scrollRef.current.scrollTop = scrollRef.current.scrollHeight
     }
   }, [messages])
 
+  const loadHistory = async () => {
+    try {
+      const data = await api.getChatHistory(fileId)
+      setMessages(data.history.map((m, i) => ({
+        id: `${i}`,
+        role: m.role as 'user' | 'assistant',
+        content: m.content,
+        timestamp: new Date()
+      })))
+      setHasContext(data.has_context)
+      setContextType(data.context_type)
+    } catch (e) {
+      console.error('Failed to load history:', e)
+    }
+  }
+
+  const storeContext = async () => {
+    if (!activeTable?.analysis?.results || !activeTable.id || !activeTable.analysis.method) return
+    
+    try {
+      await api.storeAnalysisContext(
+        activeTable.id,
+        activeTable.analysis.method,
+        activeTable.analysis.results
+      )
+      setHasContext(true)
+      setContextType(activeTable.analysis.method)
+    } catch (e) {
+      console.error('Failed to store context:', e)
+    }
+  }
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
-    if (!input.trim() || loading) return
+    if ((!input.trim() && !attachment) || loading) return
 
     const userMessage = input.trim()
     setInput('')
     
     // Add user message
-    addMessage({ role: 'user', content: userMessage })
+    const newUserMsg: ChatMessage = {
+      id: Date.now().toString(),
+      role: 'user',
+      content: userMessage || `[Attached: ${attachment?.name}]`,
+      timestamp: new Date(),
+      attachment: attachment ? { name: attachment.name, type: attachment.type } : undefined
+    }
+    setMessages(prev => [...prev, newUserMsg])
+    setAttachment(null)
     setLoading(true)
 
     try {
-      // Mock AI response - replace with actual API call
-      await new Promise((r) => setTimeout(r, 1500))
+      const response = await api.chat(fileId, userMessage, fileName)
       
-      let response = 'I am AI assistant. '
-      
-      if (analysisContext && analysisContext.type) {
-        response += `I see ${analysisContext.type.toUpperCase()} analysis results for file "${analysisContext.filename}". `
-        
-        if (analysisContext.type === 'anova' && 'summary' in analysisContext.results) {
-          const summary = analysisContext.results.summary as { benjaminiSignificant: number; totalVariables: number }
-          response += `Found ${summary.benjaminiSignificant} significant variables out of ${summary.totalVariables} (by Benjamini-Hochberg). `
-        }
-        
-        response += 'Ask me about the results!'
-      } else {
-        response += 'Upload a file and run analysis so I can help interpret the results.'
-      }
-
-      addMessage({ role: 'assistant', content: response })
-    } catch (error) {
-      addMessage({
+      const assistantMsg: ChatMessage = {
+        id: (Date.now() + 1).toString(),
         role: 'assistant',
-        content: 'An error occurred. Please try again later.',
-      })
+        content: response.response,
+        timestamp: new Date()
+      }
+      setMessages(prev => [...prev, assistantMsg])
+    } catch (error) {
+      const errorMsg: ChatMessage = {
+        id: (Date.now() + 1).toString(),
+        role: 'assistant',
+        content: `⚠️ Error: ${error instanceof Error ? error.message : 'Unknown error'}`,
+        timestamp: new Date()
+      }
+      setMessages(prev => [...prev, errorMsg])
     } finally {
       setLoading(false)
+    }
+  }
+
+  // Voice recording
+  const startRecording = async () => {
+    try {
+      const stream = await navigator.mediaDevices.getUserMedia({ audio: true })
+      const mediaRecorder = new MediaRecorder(stream)
+      mediaRecorderRef.current = mediaRecorder
+      audioChunksRef.current = []
+
+      mediaRecorder.ondataavailable = (e) => {
+        audioChunksRef.current.push(e.data)
+      }
+
+      mediaRecorder.onstop = async () => {
+        const audioBlob = new Blob(audioChunksRef.current, { type: 'audio/webm' })
+        stream.getTracks().forEach(track => track.stop())
+        
+        // Transcribe
+        setLoading(true)
+        try {
+          const result = await api.transcribeAudio(audioBlob)
+          setInput(prev => prev + (prev ? ' ' : '') + result.text)
+        } catch (e) {
+          console.error('Transcription failed:', e)
+        } finally {
+          setLoading(false)
+        }
+      }
+
+      mediaRecorder.start()
+      setRecording(true)
+    } catch (e) {
+      console.error('Failed to start recording:', e)
+    }
+  }
+
+  const stopRecording = () => {
+    if (mediaRecorderRef.current && recording) {
+      mediaRecorderRef.current.stop()
+      setRecording(false)
+    }
+  }
+
+  const handleFileSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0]
+    if (file) {
+      setAttachment(file)
     }
   }
 
@@ -74,9 +194,11 @@ export function AISidebar() {
           <Sparkles className="h-4 w-4 text-accent" />
         </div>
         <span className="font-semibold text-text-primary">{t('ai.title')}</span>
-        {analysisContext && analysisContext.type && (
-          <span className="ml-auto text-2xs px-2 py-0.5 rounded-full bg-accent/10 text-accent">
-            {analysisContext.type.toUpperCase()}
+        
+        {hasContext && (
+          <span className="ml-auto text-2xs px-2 py-0.5 rounded-full bg-success/10 text-success flex items-center gap-1">
+            <CheckCircle2 className="h-3 w-3" />
+            {contextType?.toUpperCase()}
           </span>
         )}
       </div>
@@ -85,7 +207,7 @@ export function AISidebar() {
       <ScrollArea className="flex-1" ref={scrollRef}>
         <div className="p-4 space-y-4">
           {messages.length === 0 ? (
-            <EmptyState hasContext={!!analysisContext} />
+            <EmptyState hasContext={hasContext} />
           ) : (
             <AnimatePresence mode="popLayout">
               {messages.map((message) => (
@@ -106,17 +228,30 @@ export function AISidebar() {
         </div>
       </ScrollArea>
 
+      {/* Attachment preview */}
+      {attachment && (
+        <div className="px-4 pb-2">
+          <div className="flex items-center gap-2 px-3 py-2 bg-surface-overlay rounded-lg text-sm">
+            <FileText className="h-4 w-4 text-accent" />
+            <span className="flex-1 truncate">{attachment.name}</span>
+            <button onClick={() => setAttachment(null)}>
+              <X className="h-4 w-4 text-text-muted hover:text-text-primary" />
+            </button>
+          </div>
+        </div>
+      )}
+
       {/* Input */}
       <form onSubmit={handleSubmit} className="p-4 border-t border-border">
         <div className="relative">
           <input
             type="text"
             value={input}
-            onChange={(e) => setInput(e.target.value)}
+            onChange={(e: React.ChangeEvent<HTMLInputElement>) => setInput(e.target.value)}
             placeholder={t('ai.placeholder')}
             disabled={loading}
             className={cn(
-              'w-full h-10 pl-4 pr-24 rounded-lg text-sm',
+              'w-full h-10 pl-4 pr-28 rounded-lg text-sm',
               'bg-surface border border-border text-text-primary',
               'placeholder:text-text-muted',
               'focus:outline-none focus:ring-2 focus:ring-accent/50 focus:border-accent',
@@ -124,22 +259,41 @@ export function AISidebar() {
             )}
           />
           <div className="absolute right-2 top-1/2 -translate-y-1/2 flex items-center gap-1">
+            {/* File attachment */}
+            <input
+              ref={fileInputRef}
+              type="file"
+              className="hidden"
+              onChange={handleFileSelect}
+              accept=".csv,.xlsx,.xls,.txt,.pdf"
+            />
             <button
               type="button"
               className="p-1.5 hover:bg-surface-overlay rounded transition-colors"
+              onClick={() => fileInputRef.current?.click()}
             >
               <Paperclip className="h-4 w-4 text-text-muted" />
             </button>
+            
+            {/* Voice recording */}
             <button
               type="button"
-              className="p-1.5 hover:bg-surface-overlay rounded transition-colors"
+              className={cn(
+                'p-1.5 rounded transition-colors',
+                recording 
+                  ? 'bg-error/20 text-error animate-pulse' 
+                  : 'hover:bg-surface-overlay text-text-muted'
+              )}
+              onClick={recording ? stopRecording : startRecording}
             >
-              <Mic className="h-4 w-4 text-text-muted" />
+              {recording ? <MicOff className="h-4 w-4" /> : <Mic className="h-4 w-4" />}
             </button>
+            
+            {/* Send */}
             <Button
               type="submit"
               size="icon-sm"
-              disabled={!input.trim() || loading}
+              disabled={(!input.trim() && !attachment) || loading}
               className="ml-1"
             >
               <Send className="h-4 w-4" />
@@ -160,9 +314,28 @@ function EmptyState({ hasContext }: { hasContext: boolean }) {
         <Sparkles className="h-6 w-6 text-accent" />
       </div>
       <h3 className="font-semibold text-text-primary mb-2">{t('ai.title')}</h3>
-      <p className="text-sm text-text-secondary max-w-[240px] mx-auto">
-        {hasContext ? t('ai.hint') : t('ai.noAnalysis')}
-      </p>
+      
+      {hasContext ? (
+        <div className="space-y-2">
+          <p className="text-sm text-success flex items-center justify-center gap-1">
+            <CheckCircle2 className="h-4 w-4" />
+            Analysis loaded
+          </p>
+          <p className="text-sm text-text-secondary max-w-[240px] mx-auto">
+            {t('ai.hint')}
+          </p>
+        </div>
+      ) : (
+        <div className="space-y-2">
+          <p className="text-sm text-text-muted flex items-center justify-center gap-1">
+            <AlertCircle className="h-4 w-4" />
+            No analysis context
+          </p>
+          <p className="text-sm text-text-secondary max-w-[240px] mx-auto">
+            {t('ai.noAnalysis')}
+          </p>
+        </div>
+      )}
     </div>
   )
 }
@@ -197,8 +370,45 @@ function MessageBubble({ message }: { message: ChatMessage }) {
             : 'bg-surface-overlay text-text-primary'
         )}
       >
-        {message.content}
+        {/* Attachment badge */}
+        {message.attachment && (
+          <div className="flex items-center gap-1 mb-1 text-xs opacity-70">
+            <FileText className="h-3 w-3" />
+            {message.attachment.name}
+          </div>
+        )}
+        
+        {/* Message content with markdown */}
+        <MarkdownContent content={message.content} />
       </div>
     </motion.div>
+  )
+}
+
+function MarkdownContent({ content }: { content: string }) {
+  // Simple markdown parsing
+  const parseMarkdown = (text: string) => {
+    // Bold
+    text = text.replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>')
+    // Italic
+    text = text.replace(/\*(.*?)\*/g, '<em>$1</em>')
+    // Code blocks
+    text = text.replace(/```([\s\S]*?)```/g, '<pre class="bg-surface/50 p-2 rounded my-2 text-xs overflow-x-auto"><code>$1</code></pre>')
+    // Inline code
+    text = text.replace(/`(.*?)`/g, '<code class="bg-surface/30 px-1 rounded text-xs">$1</code>')
+    // Lists
+    text = text.replace(/^- (.*?)$/gm, '<li class="ml-4">$1</li>')
+    text = text.replace(/(<li.*<\/li>\n?)+/g, '<ul class="list-disc my-2">$&</ul>')
+    // Line breaks
+    text = text.replace(/\n/g, '<br/>')
+    
+    return text
+  }
+
+  return (
+    <div 
+      className="prose prose-sm max-w-none"
+      dangerouslySetInnerHTML={{ __html: parseMarkdown(content) }}
+    />
   )
 }

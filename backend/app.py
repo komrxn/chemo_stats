@@ -14,7 +14,9 @@ from fastapi.responses import StreamingResponse
 from services.anova import AnovaAnalyzer
 from services.pca import PCAAnalyzer
 from services.export import generate_anova_excel
+from services.ai_assistant import ai_assistant
 from utils.file_parser import parse_uploaded_file, preview_file
+from pydantic import BaseModel
 
 # Configure logging
 logging.basicConfig(
@@ -235,6 +237,140 @@ async def export_anova(
     except Exception as e:
         logger.error(f"❌ Excel Export Failed: {str(e)}", exc_info=True)
         raise HTTPException(status_code=500, detail=f"Export failed: {str(e)}")
+
+
+# ═══════════════════════════════════════════════════════════════════════════
+# AI Assistant Endpoints
+# ═══════════════════════════════════════════════════════════════════════════
+
+class ChatRequest(BaseModel):
+    file_id: str
+    message: str
+    file_name: str | None = None
+
+
+class ChatResponse(BaseModel):
+    response: str
+    file_id: str
+
+
+@app.post("/api/chat")
+async def chat_with_assistant(request: ChatRequest) -> ChatResponse:
+    """
+    Chat with AI Assistant
+    
+    Args:
+        request: Chat request with file_id and message
+    
+    Returns:
+        AI response
+    """
+    try:
+        logger.info(f"💬 Chat request for file: {request.file_id}")
+        
+        response = await ai_assistant.chat(
+            file_id=request.file_id,
+            user_message=request.message,
+            file_name=request.file_name
+        )
+        
+        return ChatResponse(response=response, file_id=request.file_id)
+        
+    except Exception as e:
+        logger.error(f"❌ Chat failed: {str(e)}", exc_info=True)
+        raise HTTPException(status_code=500, detail=f"Chat failed: {str(e)}")
+
+
+@app.post("/api/chat/context")
+async def store_analysis_context(
+    file_id: str = Form(...),
+    analysis_type: str = Form(...),
+    results: str = Form(...)  # JSON string
+) -> dict[str, str]:
+    """
+    Store analysis results as AI context
+    
+    Args:
+        file_id: Unique file identifier
+        analysis_type: 'anova' or 'pca'
+        results: JSON string of results
+    
+    Returns:
+        Confirmation
+    """
+    try:
+        import json as json_module
+        results_dict = json_module.loads(results)
+        
+        ai_assistant.store_analysis_context(file_id, analysis_type, results_dict)
+        
+        return {"status": "ok", "message": f"Context stored for {file_id}"}
+        
+    except Exception as e:
+        logger.error(f"❌ Store context failed: {str(e)}", exc_info=True)
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@app.get("/api/chat/history/{file_id}")
+async def get_chat_history(file_id: str) -> dict[str, Any]:
+    """Get chat history for a file"""
+    history = ai_assistant.get_chat_history(file_id)
+    context = ai_assistant.get_analysis_context(file_id)
+    
+    return {
+        "history": history,
+        "has_context": context is not None,
+        "context_type": context.get("type") if context else None
+    }
+
+
+@app.delete("/api/chat/context/{file_id}")
+async def clear_file_context(file_id: str) -> dict[str, str]:
+    """Clear context and chat history for a file"""
+    ai_assistant.clear_context(file_id)
+    return {"status": "ok", "message": f"Context cleared for {file_id}"}
+
+
+@app.post("/api/transcribe")
+async def transcribe_audio(
+    audio: UploadFile = File(...)
+) -> dict[str, str]:
+    """
+    Transcribe audio using OpenAI Whisper
+    
+    Args:
+        audio: Audio file (webm, mp3, wav, etc.)
+    
+    Returns:
+        Transcribed text
+    """
+    try:
+        if not ai_assistant.client:
+            raise HTTPException(status_code=503, detail="OpenAI not configured")
+        
+        logger.info(f"🎤 Transcribing audio: {audio.filename}")
+        
+        # Read audio file
+        audio_bytes = await audio.read()
+        
+        # Create a file-like object for OpenAI
+        from io import BytesIO
+        audio_file = BytesIO(audio_bytes)
+        audio_file.name = audio.filename or "audio.webm"
+        
+        # Transcribe with Whisper
+        transcript = ai_assistant.client.audio.transcriptions.create(
+            model="whisper-1",
+            file=audio_file
+        )
+        
+        logger.info(f"✅ Transcription complete: {len(transcript.text)} chars")
+        
+        return {"text": transcript.text}
+        
+    except Exception as e:
+        logger.error(f"❌ Transcription failed: {str(e)}", exc_info=True)
+        raise HTTPException(status_code=500, detail=f"Transcription failed: {str(e)}")
 
 
 if __name__ == "__main__":
