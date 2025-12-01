@@ -18,6 +18,7 @@ statsmodels==0.14.4
 
 # Logging & Utilities
 python-json-logger==3.1.0
+python-dotenv==1.0.0
 
 # AI Assistant
 openai==1.40.0

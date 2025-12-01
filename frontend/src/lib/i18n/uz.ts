@@ -109,6 +109,7 @@ export const uz = {
   'boxplot.resizeHint': '+ aylantirish - o\'lchamini o\'zgartirish',
   'boxplot.minimize': 'Kichraytirish',
   'boxplot.maximize': 'Kattalashtirish',
+  'boxplot.addToChat': 'Chatga qo\'shish',
   'boxplot.groups': 'guruhlar',
 
   // ═══════════════════════════════════════════════════════════════════════════

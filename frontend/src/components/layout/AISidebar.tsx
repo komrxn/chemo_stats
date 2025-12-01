@@ -2,9 +2,9 @@ import { useState, useRef, useEffect } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
 import { 
   Sparkles, Send, Paperclip, Mic, MicOff, Loader2, User, Bot, 
-  X, FileText, AlertCircle, CheckCircle2
+  X, FileText, AlertCircle, CheckCircle2, Image as ImageIcon
 } from 'lucide-react'
-import { useActiveTable } from '@/store'
+import { useActiveTable, useAppStore } from '@/store'
 import { useTranslation } from '@/lib/i18n'
 import { api } from '@/lib/api'
 import { Button } from '@/components/ui/Button'
@@ -16,7 +16,7 @@ interface ChatMessage {
   role: 'user' | 'assistant'
   content: string
   timestamp: Date
-  attachment?: { name: string; type: string }
+  attachment?: { name: string; type: string; imageData?: string }
 }
 
 export function AISidebar() {
@@ -27,16 +27,33 @@ export function AISidebar() {
   const [loading, setLoading] = useState(false)
   const [recording, setRecording] = useState(false)
   const [attachment, setAttachment] = useState<File | null>(null)
+  const [imageAttachment, setImageAttachment] = useState<{ data: string; name: string; variableName?: string } | null>(null)
   const [hasContext, setHasContext] = useState(false)
   const [contextType, setContextType] = useState<string | null>(null)
   
   const scrollRef = useRef<HTMLDivElement>(null)
   const fileInputRef = useRef<HTMLInputElement>(null)
+  const imageInputRef = useRef<HTMLInputElement>(null)
   const mediaRecorderRef = useRef<MediaRecorder | null>(null)
   const audioChunksRef = useRef<Blob[]>([])
 
+  const pendingAttachment = useAppStore((s) => s.pendingAttachment)
+  const setPendingAttachment = useAppStore((s) => s.setPendingAttachment)
+  
   const fileId = activeTable?.id || 'default'
   const fileName = activeTable?.name || 'No file'
+  
+  // Handle boxplot attachment from store
+  useEffect(() => {
+    if (pendingAttachment?.type === 'image') {
+      setImageAttachment({
+        data: pendingAttachment.data,
+        name: pendingAttachment.name,
+        variableName: pendingAttachment.variableName,
+      })
+      setPendingAttachment(null) // Clear from store
+    }
+  }, [pendingAttachment, setPendingAttachment])
 
   // Load chat history when file changes
   useEffect(() => {
@@ -97,25 +114,51 @@ export function AISidebar() {
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
-    if ((!input.trim() && !attachment) || loading) return
+    if ((!input.trim() && !attachment && !imageAttachment) || loading) return
 
     const userMessage = input.trim()
     setInput('')
+    
+    // Build message content
+    let messageContent = userMessage
+    if (!messageContent && imageAttachment) {
+      messageContent = `[Boxplot: ${imageAttachment.variableName || imageAttachment.name}]`
+    } else if (!messageContent && attachment) {
+      messageContent = `[Attached: ${attachment.name}]`
+    }
+    
+    // Add context about the image if present
+    if (imageAttachment && userMessage) {
+      messageContent = `[Re: ${imageAttachment.variableName} boxplot] ${userMessage}`
+    }
     
     // Add user message
     const newUserMsg: ChatMessage = {
       id: Date.now().toString(),
       role: 'user',
-      content: userMessage || `[Attached: ${attachment?.name}]`,
+      content: messageContent,
       timestamp: new Date(),
-      attachment: attachment ? { name: attachment.name, type: attachment.type } : undefined
+      attachment: imageAttachment 
+        ? { name: imageAttachment.name, type: 'image/png', imageData: imageAttachment.data }
+        : attachment 
+          ? { name: attachment.name, type: attachment.type } 
+          : undefined
     }
     setMessages(prev => [...prev, newUserMsg])
+    
+    const currentImageAttachment = imageAttachment
     setAttachment(null)
+    setImageAttachment(null)
     setLoading(true)
 
     try {
-      const response = await api.chat(fileId, userMessage, fileName)
+      // Include image context in message to AI
+      let aiMessage = userMessage
+      if (currentImageAttachment?.variableName) {
+        aiMessage = `[User is asking about the boxplot for variable "${currentImageAttachment.variableName}"] ${userMessage || 'Please analyze this boxplot.'}`
+      }
+      
+      const response = await api.chat(fileId, aiMessage, fileName)
       
       const assistantMsg: ChatMessage = {
         id: (Date.now() + 1).toString(),
@@ -186,6 +229,20 @@ export function AISidebar() {
     }
   }
 
+  const handleImageSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0]
+    if (file && file.type.startsWith('image/')) {
+      const reader = new FileReader()
+      reader.onload = () => {
+        setImageAttachment({
+          data: reader.result as string,
+          name: file.name,
+        })
+      }
+      reader.readAsDataURL(file)
+    }
+  }
+
   return (
     <div className="h-full bg-surface-raised border-l border-border flex flex-col">
       {/* Header */}
@@ -228,8 +285,35 @@ export function AISidebar() {
         </div>
       </ScrollArea>
 
-      {/* Attachment preview */}
-      {attachment && (
+      {/* Image attachment preview */}
+      {imageAttachment && (
+        <div className="px-4 pb-2">
+          <div className="relative bg-surface-overlay rounded-lg overflow-hidden">
+            <img 
+              src={imageAttachment.data} 
+              alt={imageAttachment.name}
+              className="w-full h-32 object-contain bg-surface"
+            />
+            <div className="absolute top-2 right-2">
+              <button 
+                onClick={() => setImageAttachment(null)}
+                className="p-1 bg-surface/80 rounded-full hover:bg-surface"
+              >
+                <X className="h-4 w-4 text-text-muted hover:text-text-primary" />
+              </button>
+            </div>
+            <div className="px-3 py-2 flex items-center gap-2 text-sm">
+              <ImageIcon className="h-4 w-4 text-accent" />
+              <span className="flex-1 truncate text-text-secondary">
+                {imageAttachment.variableName || imageAttachment.name}
+              </span>
+            </div>
+          </div>
+        </div>
+      )}
+      
+      {/* File attachment preview */}
+      {attachment && !imageAttachment && (
         <div className="px-4 pb-2">
           <div className="flex items-center gap-2 px-3 py-2 bg-surface-overlay rounded-lg text-sm">
             <FileText className="h-4 w-4 text-accent" />
@@ -259,6 +343,28 @@ export function AISidebar() {
             )}
           />
           <div className="absolute right-2 top-1/2 -translate-y-1/2 flex items-center gap-1">
+            {/* Image attachment */}
+            <input
+              ref={imageInputRef}
+              type="file"
+              className="hidden"
+              onChange={handleImageSelect}
+              accept="image/*"
+            />
+            <button
+              type="button"
+              className={cn(
+                'p-1.5 rounded transition-colors',
+                imageAttachment 
+                  ? 'bg-accent/20 text-accent' 
+                  : 'hover:bg-surface-overlay text-text-muted'
+              )}
+              onClick={() => imageInputRef.current?.click()}
+              title="Attach image"
+            >
+              <ImageIcon className="h-4 w-4" />
+            </button>
+            
             {/* File attachment */}
             <input
               ref={fileInputRef}
@@ -269,10 +375,16 @@ export function AISidebar() {
             />
             <button
               type="button"
-              className="p-1.5 hover:bg-surface-overlay rounded transition-colors"
+              className={cn(
+                'p-1.5 rounded transition-colors',
+                attachment 
+                  ? 'bg-accent/20 text-accent' 
+                  : 'hover:bg-surface-overlay text-text-muted'
+              )}
               onClick={() => fileInputRef.current?.click()}
+              title="Attach file"
             >
-              <Paperclip className="h-4 w-4 text-text-muted" />
+              <Paperclip className="h-4 w-4" />
             </button>
             
             {/* Voice recording */}
@@ -285,6 +397,7 @@ export function AISidebar() {
                   : 'hover:bg-surface-overlay text-text-muted'
               )}
               onClick={recording ? stopRecording : startRecording}
+              title="Voice input"
             >
               {recording ? <MicOff className="h-4 w-4" /> : <Mic className="h-4 w-4" />}
             </button>
@@ -293,7 +406,7 @@ export function AISidebar() {
             <Button
               type="submit"
               size="icon-sm"
-              disabled={(!input.trim() && !attachment) || loading}
+              disabled={(!input.trim() && !attachment && !imageAttachment) || loading}
               className="ml-1"
             >
               <Send className="h-4 w-4" />
@@ -364,22 +477,35 @@ function MessageBubble({ message }: { message: ChatMessage }) {
       </div>
       <div
         className={cn(
-          'flex-1 px-3 py-2 rounded-lg text-sm',
+          'flex-1 rounded-lg text-sm overflow-hidden',
           isUser
             ? 'bg-accent text-surface-raised'
             : 'bg-surface-overlay text-text-primary'
         )}
       >
-        {/* Attachment badge */}
-        {message.attachment && (
-          <div className="flex items-center gap-1 mb-1 text-xs opacity-70">
-            <FileText className="h-3 w-3" />
-            {message.attachment.name}
+        {/* Image attachment */}
+        {message.attachment?.imageData && (
+          <div className="w-full">
+            <img 
+              src={message.attachment.imageData} 
+              alt={message.attachment.name}
+              className="w-full h-auto max-h-48 object-contain bg-surface"
+            />
           </div>
         )}
         
-        {/* Message content with markdown */}
-        <MarkdownContent content={message.content} />
+        <div className="px-3 py-2">
+          {/* File attachment badge (non-image) */}
+          {message.attachment && !message.attachment.imageData && (
+            <div className="flex items-center gap-1 mb-1 text-xs opacity-70">
+              <FileText className="h-3 w-3" />
+              {message.attachment.name}
+            </div>
+          )}
+          
+          {/* Message content with markdown */}
+          <MarkdownContent content={message.content} />
+        </div>
       </div>
     </motion.div>
   )

@@ -109,6 +109,7 @@ export const en = {
   'boxplot.resizeHint': '+ scroll to resize',
   'boxplot.minimize': 'Minimize',
   'boxplot.maximize': 'Maximize',
+  'boxplot.addToChat': 'Add to chat',
   'boxplot.groups': 'groups',
 
   // ═══════════════════════════════════════════════════════════════════════════

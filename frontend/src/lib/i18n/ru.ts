@@ -109,6 +109,7 @@ export const ru = {
   'boxplot.resizeHint': '+ скролл для изменения размера',
   'boxplot.minimize': 'Уменьшить',
   'boxplot.maximize': 'Увеличить',
+  'boxplot.addToChat': 'Добавить в чат',
   'boxplot.groups': 'групп',
 
   // ═══════════════════════════════════════════════════════════════════════════

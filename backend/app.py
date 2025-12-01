@@ -4,6 +4,10 @@ Author: Senior Engineer
 """
 import logging
 import os
+from dotenv import load_dotenv
+
+# Load .env file
+load_dotenv()
 from contextlib import asynccontextmanager
 from typing import Any
 
@@ -138,7 +142,8 @@ async def analyze_anova(
         results['classes'] = classes.tolist()
         results['variable_names'] = var_names
         
-        logger.info(f"✅ ANOVA Complete - {len(results.get('significant_variables', []))} significant vars")
+        logger.info(f"✅ ANOVA Complete - {results['summary']['benjamini_significant']} Benjamini significant, "
+                    f"{results['summary']['bonferroni_significant']} Bonferroni significant")
         return results
         
     except Exception as e:

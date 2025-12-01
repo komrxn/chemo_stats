@@ -83,6 +83,10 @@ class AIAssistant:
     
     def store_analysis_context(self, file_id: str, analysis_type: str, results: Dict[str, Any]):
         """Store analysis results in Redis for AI context"""
+        # Debug: log what we receive
+        summary = results.get("summary", {})
+        logger.info(f"Storing context - summary: {summary}")
+        
         context = {
             "type": analysis_type,
             "results": self._summarize_results(analysis_type, results),
@@ -98,34 +102,70 @@ class AIAssistant:
         
         logger.info(f"Stored {analysis_type} context for file {file_id}")
     
-    def _summarize_results(self, analysis_type: str, results: Dict[str, Any]) -> Dict[str, Any]:
-        """Create a concise summary for AI context"""
+    def _summarize_results(self, analysis_type: str, results: Dict[str, Any]) -> str:
+        """Create human-readable context that describes what user sees on screen"""
         if analysis_type == "anova":
             summary = results.get("summary", {})
-            top_results = results.get("results", [])[:10]  # Top 10 variables
+            all_results = results.get("results", [])
             
-            return {
-                "total_variables": summary.get("total_variables", 0),
-                "benjamini_significant": summary.get("benjamini_significant", 0),
-                "bonferroni_significant": summary.get("bonferroni_significant", 0),
-                "num_groups": summary.get("num_groups", 0),
-                "top_significant": [
-                    {
-                        "variable": r.get("variable"),
-                        "p_value": r.get("pValue"),
-                        "fdr": r.get("fdr"),
-                        "significant": r.get("benjamini", False)
-                    }
-                    for r in top_results
-                ]
-            }
+            # Get significant variables
+            significant = [r for r in all_results if r.get("benjamini", False)]
+            # Get top 5 by p-value (most interesting even if not significant)
+            top_by_pvalue = sorted(all_results, key=lambda x: x.get("pValue", 1))[:5]
+            
+            # Handle both camelCase (from frontend) and snake_case (from backend)
+            total_vars = summary.get('totalVariables') or summary.get('total_variables', 0)
+            num_groups = summary.get('numGroups') or summary.get('num_groups', 0)
+            benjamini_sig = summary.get('benjaminiSignificant') or summary.get('benjamini_significant', 0)
+            bonferroni_sig = summary.get('bonferroniSignificant') or summary.get('bonferroni_significant', 0)
+            
+            # Build readable context
+            lines = []
+            lines.append("=== ANOVA ANALYSIS RESULTS ===")
+            lines.append(f"Total variables analyzed: {total_vars}")
+            lines.append(f"Number of groups compared: {num_groups}")
+            lines.append(f"Significant after Benjamini-Hochberg (FDR<0.05): {benjamini_sig}")
+            lines.append(f"Significant after Bonferroni correction: {bonferroni_sig}")
+            lines.append("")
+            
+            if significant:
+                lines.append("=== SIGNIFICANT VARIABLES (user sees these highlighted) ===")
+                for r in significant[:10]:
+                    lines.append(f"• {r.get('variable')}: p={r.get('pValue'):.4f}, FDR={r.get('fdr'):.4f}")
+                    # Add boxplot data if available
+                    if r.get("boxplotData"):
+                        for group in r["boxplotData"]:
+                            lines.append(f"  Group '{group['group']}': median={group.get('median', 'N/A')}, "
+                                       f"range=[{group.get('min', 'N/A')}-{group.get('max', 'N/A')}], n={group.get('n', 'N/A')}")
+                lines.append("")
+            else:
+                lines.append("=== NO SIGNIFICANT VARIABLES FOUND ===")
+                lines.append("After multiple testing correction, no variables passed significance threshold.")
+                lines.append("")
+            
+            lines.append("=== TOP 5 VARIABLES BY P-VALUE (lowest p, user sees boxplots for these) ===")
+            for r in top_by_pvalue:
+                status = "✓ SIGNIFICANT" if r.get("benjamini", False) else "✗ not significant"
+                lines.append(f"• {r.get('variable')}: p={r.get('pValue'):.4f}, FDR={r.get('fdr'):.4f} [{status}]")
+                # Add boxplot statistics
+                if r.get("boxplotData"):
+                    for group in r["boxplotData"]:
+                        med = group.get('median')
+                        med_str = f"{med:.3f}" if med is not None else "N/A"
+                        lines.append(f"  └─ Group '{group['group']}': median={med_str}, n={group.get('n', 'N/A')}")
+            
+            return "\n".join(lines)
+            
         elif analysis_type == "pca":
-            return {
-                "total_variance_explained": results.get("summary", {}).get("total_variance_explained", 0),
-                "num_components": len(results.get("explained_variance", [])),
-                "explained_variance": results.get("explained_variance", [])[:5]
-            }
-        return results
+            lines = []
+            lines.append("=== PCA ANALYSIS RESULTS ===")
+            lines.append(f"Total variance explained: {results.get('summary', {}).get('total_variance_explained', 0):.1f}%")
+            ev = results.get("explained_variance", [])[:5]
+            for i, v in enumerate(ev, 1):
+                lines.append(f"PC{i}: {v:.1f}% variance")
+            return "\n".join(lines)
+            
+        return str(results)
     
     def get_analysis_context(self, file_id: str) -> Optional[Dict[str, Any]]:
         """Retrieve analysis context from Redis"""
@@ -183,15 +223,14 @@ class AIAssistant:
         # Add context if available
         if context:
             context_msg = f"""
-**Current Analysis Context:**
-- File: {file_name or file_id}
-- Analysis Type: {context['type'].upper()}
-- Results Summary:
-```json
-{json.dumps(context['results'], indent=2)}
-```
+📊 **USER'S CURRENT SCREEN - {context['type'].upper()} Analysis**
+File being analyzed: {file_name or file_id}
 
-Use this context to provide specific, relevant answers about the analysis results.
+{context['results']}
+
+---
+The user sees boxplots for the variables listed above. Help them understand these specific results.
+Reference specific variable names and values from the data above.
 """
             messages.append({"role": "system", "content": context_msg})
         
@@ -204,13 +243,19 @@ Use this context to provide specific, relevant answers about the analysis result
         
         try:
             response = self.client.chat.completions.create(
-                model="gpt-4o-mini",
+                model="gpt-5-mini",
                 messages=messages,
-                max_tokens=1000,
-                temperature=0.7
+                max_completion_tokens=8000  # reasoning models need more tokens (reasoning + output)
             )
             
+            logger.info(f"OpenAI response: {response}")
+            
             assistant_message = response.choices[0].message.content
+            
+            # Handle None or empty response
+            if not assistant_message:
+                logger.warning(f"Empty response from OpenAI. Finish reason: {response.choices[0].finish_reason}")
+                assistant_message = "🤔 AI returned an empty response. Please try again."
             
             # Save to history
             self.add_to_chat_history(file_id, "user", user_message)

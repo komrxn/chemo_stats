@@ -12,6 +12,13 @@ import type {
 // App Store - Global state management
 // ═══════════════════════════════════════════════════════════════════════════
 
+interface ChatAttachment {
+  type: 'image' | 'file'
+  data: string // base64 for images, filename for files
+  name: string
+  variableName?: string // for boxplot attachments
+}
+
 interface AppState {
   // Projects & Files
   projects: Project[]
@@ -22,10 +29,12 @@ interface AppState {
   // UI State
   leftSidebarOpen: boolean
   rightSidebarOpen: boolean
+  aiSidebarWidth: number // resizable width
 
   // Chat
   chatMessages: ChatMessage[]
   chatLoading: boolean
+  pendingAttachment: ChatAttachment | null // for boxplot -> chat
 
   // Project Actions
   createProject: (name: string) => string
@@ -48,10 +57,14 @@ interface AppState {
 
   toggleLeftSidebar: () => void
   toggleRightSidebar: () => void
+  setAiSidebarWidth: (width: number) => void
 
   addChatMessage: (message: Omit<ChatMessage, 'id' | 'timestamp'>) => void
   setChatLoading: (loading: boolean) => void
   clearChat: () => void
+  
+  // Attachment from boxplot
+  setPendingAttachment: (attachment: ChatAttachment | null) => void
 }
 
 // Helper
@@ -137,8 +150,10 @@ export const useAppStore = create<AppState>((set) => ({
   activeFolderId: null,
   leftSidebarOpen: true,
   rightSidebarOpen: true,
+  aiSidebarWidth: 340,
   chatMessages: [],
   chatLoading: false,
+  pendingAttachment: null,
 
   // Project actions
   createProject: (name) => {
@@ -320,6 +335,10 @@ export const useAppStore = create<AppState>((set) => ({
     set((state) => ({ rightSidebarOpen: !state.rightSidebarOpen }))
   },
 
+  setAiSidebarWidth: (width) => {
+    set({ aiSidebarWidth: Math.max(280, Math.min(600, width)) })
+  },
+
   // Chat actions
   addChatMessage: (message) => {
     const chatMessage: ChatMessage = {
@@ -338,6 +357,10 @@ export const useAppStore = create<AppState>((set) => ({
 
   clearChat: () => {
     set({ chatMessages: [] })
+  },
+
+  setPendingAttachment: (attachment) => {
+    set({ pendingAttachment: attachment })
   },
 }))
 

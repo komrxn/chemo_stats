@@ -1,11 +1,13 @@
-import { useMemo, useState, useEffect, useRef } from 'react'
+import { useMemo, useState, useEffect, useRef, useCallback } from 'react'
 import { motion } from 'framer-motion'
 import Plot from 'react-plotly.js'
-import { Maximize2, Minimize2 } from 'lucide-react'
+import { Maximize2, Minimize2, MessageSquarePlus } from 'lucide-react'
 import type { BoxplotVariable } from '@/types'
 import { useTranslation } from '@/lib/i18n'
 import { formatPValue, cn } from '@/lib/utils'
 import { Button } from '@/components/ui/Button'
+import { useAppStore } from '@/store'
+import html2canvas from 'html2canvas'
 
 interface BoxPlotChartProps {
   data: BoxplotVariable
@@ -30,8 +32,46 @@ const DEFAULT_HEIGHT = 380
 export function BoxPlotChart({ data, pValue, fdr }: BoxPlotChartProps) {
   const { t } = useTranslation()
   const [chartHeight, setChartHeight] = useState(DEFAULT_HEIGHT)
+  const [capturing, setCapturing] = useState(false)
   const containerRef = useRef<HTMLDivElement>(null)
   const plotRef = useRef<any>(null)
+  
+  const setPendingAttachment = useAppStore((s) => s.setPendingAttachment)
+  const toggleRightSidebar = useAppStore((s) => s.toggleRightSidebar)
+  const rightSidebarOpen = useAppStore((s) => s.rightSidebarOpen)
+  
+  // Add boxplot to chat
+  const handleAddToChat = useCallback(async () => {
+    if (!containerRef.current || capturing) return
+    
+    setCapturing(true)
+    try {
+      const canvas = await html2canvas(containerRef.current, {
+        backgroundColor: '#12141a',
+        scale: 2,
+        logging: false,
+        useCORS: true,
+      })
+      
+      const imageData = canvas.toDataURL('image/png')
+      
+      setPendingAttachment({
+        type: 'image',
+        data: imageData,
+        name: `${data.variableName}_boxplot.png`,
+        variableName: data.variableName,
+      })
+      
+      // Open sidebar if closed
+      if (!rightSidebarOpen) {
+        toggleRightSidebar()
+      }
+    } catch (error) {
+      console.error('Failed to capture boxplot:', error)
+    } finally {
+      setCapturing(false)
+    }
+  }, [data.variableName, capturing, setPendingAttachment, rightSidebarOpen, toggleRightSidebar])
 
   // Native wheel handler to properly prevent page scroll
   useEffect(() => {
@@ -262,8 +302,20 @@ export function BoxPlotChart({ data, pValue, fdr }: BoxPlotChartProps) {
             </span>
           )}
           
+          {/* Add to chat button */}
+          <Button
+            variant="ghost"
+            size="sm"
+            onClick={handleAddToChat}
+            disabled={capturing}
+            className="ml-2 text-accent hover:bg-accent/10"
+            title={t('boxplot.addToChat')}
+          >
+            <MessageSquarePlus className="h-4 w-4" />
+          </Button>
+          
           {/* Resize controls */}
-          <div className="flex items-center gap-1 ml-2 border-l border-border pl-2">
+          <div className="flex items-center gap-1 ml-1 border-l border-border pl-2">
             <Button
               variant="ghost"
               size="sm"
