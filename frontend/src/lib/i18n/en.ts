@@ -7,7 +7,7 @@ export const en = {
   // General
   // ═══════════════════════════════════════════════════════════════════════════
   'app.name': 'KKH Analysis',
-  'app.loading': 'Loading...',
+  'app.loading': 'Thinking...',
   'app.save': 'Save',
   'app.cancel': 'Cancel',
   'app.delete': 'Delete',

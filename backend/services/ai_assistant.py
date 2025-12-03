@@ -242,10 +242,11 @@ Reference specific variable names and values from the data above.
         messages.append({"role": "user", "content": user_message})
         
         try:
+            # Don't pass max_tokens/max_completion_tokens explicitly to avoid
+            # incompatibilities between different OpenAI SDK / model versions.
             response = self.client.chat.completions.create(
                 model="gpt-5-mini",
                 messages=messages,
-                max_completion_tokens=8000  # reasoning models need more tokens (reasoning + output)
             )
             
             logger.info(f"OpenAI response: {response}")

@@ -7,7 +7,7 @@ export const uz = {
   // Umumiy
   // ═══════════════════════════════════════════════════════════════════════════
   'app.name': 'KKH Tahlil',
-  'app.loading': 'Yuklanmoqda...',
+  'app.loading': 'Fikrlamoqdaman...',
   'app.save': 'Saqlash',
   'app.cancel': 'Bekor qilish',
   'app.delete': "O'chirish",
