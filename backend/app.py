@@ -4,10 +4,12 @@ Author: Senior Engineer
 """
 import logging
 import os
+from pathlib import Path
 from dotenv import load_dotenv
 
-# Load .env file
-load_dotenv()
+# Load .env file from project root (kkh-analysis/.env)
+PROJECT_ROOT_ENV = Path(__file__).resolve().parents[1] / ".env"
+load_dotenv(PROJECT_ROOT_ENV)
 from contextlib import asynccontextmanager
 from typing import Any
 
