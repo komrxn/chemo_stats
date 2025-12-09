@@ -123,12 +123,12 @@ class AnovaAnalyzer:
             benjamini_sig
         )
         
-        # Compute boxplot data for top significant variables (PER GROUP!)
+        # Compute boxplot data for significant variables (PER GROUP!)
         boxplot_data = self._compute_boxplots_per_group(
             data,
             classes,
             var_names,
-            significant_vars[:4]  # Top 4 variables
+            significant_vars  # All significant variables
         )
         
         # Compute global and group statistics

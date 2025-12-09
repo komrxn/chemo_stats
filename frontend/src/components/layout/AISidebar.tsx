@@ -1,8 +1,8 @@
 import { useState, useRef, useEffect } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
-import { 
-  Sparkles, Send, Paperclip, Mic, MicOff, Loader2, User, Bot, 
-  X, FileText, AlertCircle, CheckCircle2, Image as ImageIcon
+import {
+  Sparkles, Send, Paperclip, Mic, MicOff, Loader2, User, Bot,
+  X, FileText, AlertCircle, CheckCircle2
 } from 'lucide-react'
 import { useActiveTable, useAppStore } from '@/store'
 import { useTranslation } from '@/lib/i18n'
@@ -17,6 +17,7 @@ interface ChatMessage {
   content: string
   timestamp: Date
   attachment?: { name: string; type: string; imageData?: string }
+  attachments?: { name: string; type: string; imageData?: string; variableName?: string }[]
 }
 
 export function AISidebar() {
@@ -27,31 +28,35 @@ export function AISidebar() {
   const [loading, setLoading] = useState(false)
   const [recording, setRecording] = useState(false)
   const [attachment, setAttachment] = useState<File | null>(null)
-  const [imageAttachment, setImageAttachment] = useState<{ data: string; name: string; variableName?: string } | null>(null)
+  const [imageAttachments, setImageAttachments] = useState<{ data: string; name: string; variableName?: string }[]>([])
+  const [previewImage, setPreviewImage] = useState<string | null>(null)
   const [hasContext, setHasContext] = useState(false)
   const [contextType, setContextType] = useState<string | null>(null)
-  
+
   const scrollRef = useRef<HTMLDivElement>(null)
   const fileInputRef = useRef<HTMLInputElement>(null)
-  const imageInputRef = useRef<HTMLInputElement>(null)
   const mediaRecorderRef = useRef<MediaRecorder | null>(null)
   const audioChunksRef = useRef<Blob[]>([])
 
   const pendingAttachment = useAppStore((s) => s.pendingAttachment)
   const setPendingAttachment = useAppStore((s) => s.setPendingAttachment)
-  
+
   const fileId = activeTable?.id || 'default'
   const fileName = activeTable?.name || 'No file'
-  
+
   // Handle boxplot attachment from store
   useEffect(() => {
     if (pendingAttachment?.type === 'image') {
-      setImageAttachment({
-        data: pendingAttachment.data,
-        name: pendingAttachment.name,
-        variableName: pendingAttachment.variableName,
+      // Add to array (max 10)
+      setImageAttachments(prev => {
+        if (prev.length >= 10) return prev
+        return [...prev, {
+          data: pendingAttachment.data,
+          name: pendingAttachment.name,
+          variableName: pendingAttachment.variableName,
+        }]
       })
-      setPendingAttachment(null) // Clear from store
+      setPendingAttachment(null)
     }
   }, [pendingAttachment, setPendingAttachment])
 
@@ -98,7 +103,7 @@ export function AISidebar() {
 
   const storeContext = async () => {
     if (!activeTable?.analysis?.results || !activeTable.id || !activeTable.analysis.method) return
-    
+
     try {
       await api.storeAnalysisContext(
         activeTable.id,
@@ -114,52 +119,59 @@ export function AISidebar() {
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
-    if ((!input.trim() && !attachment && !imageAttachment) || loading) return
+    if ((!input.trim() && !attachment && imageAttachments.length === 0) || loading) return
 
     const userMessage = input.trim()
     setInput('')
-    
+
     // Build message content
     let messageContent = userMessage
-    if (!messageContent && imageAttachment) {
-      messageContent = `[Boxplot: ${imageAttachment.variableName || imageAttachment.name}]`
+    const firstImage = imageAttachments[0]
+    if (!messageContent && firstImage) {
+      messageContent = `[Boxplot: ${firstImage.variableName || firstImage.name}]`
     } else if (!messageContent && attachment) {
       messageContent = `[Attached: ${attachment.name}]`
     }
-    
-    // Add context about the image if present
-    if (imageAttachment && userMessage) {
-      messageContent = `[Re: ${imageAttachment.variableName} boxplot] ${userMessage}`
+
+    // Add context about images if present
+    if (imageAttachments.length > 0 && userMessage) {
+      const varNames = imageAttachments.map(img => img.variableName || img.name).join(', ')
+      messageContent = `[Re: ${varNames}] ${userMessage}`
     }
-    
+
     // Add user message
     const newUserMsg: ChatMessage = {
       id: Date.now().toString(),
       role: 'user',
       content: messageContent,
       timestamp: new Date(),
-      attachment: imageAttachment 
-        ? { name: imageAttachment.name, type: 'image/png', imageData: imageAttachment.data }
-        : attachment 
-          ? { name: attachment.name, type: attachment.type } 
-          : undefined
+      attachment: attachment
+        ? { name: attachment.name, type: attachment.type }
+        : undefined,
+      attachments: imageAttachments.map(img => ({
+        name: img.name,
+        type: 'image/png',
+        imageData: img.data,
+        variableName: img.variableName
+      }))
     }
     setMessages(prev => [...prev, newUserMsg])
-    
-    const currentImageAttachment = imageAttachment
+
+    const currentImages = [...imageAttachments]
     setAttachment(null)
-    setImageAttachment(null)
+    setImageAttachments([])
     setLoading(true)
 
     try {
       // Include image context in message to AI
       let aiMessage = userMessage
-      if (currentImageAttachment?.variableName) {
-        aiMessage = `[User is asking about the boxplot for variable "${currentImageAttachment.variableName}"] ${userMessage || 'Please analyze this boxplot.'}`
+      if (currentImages.length > 0 && currentImages[0]?.variableName) {
+        const varNames = currentImages.map(img => img.variableName).filter(Boolean).join(', ')
+        aiMessage = `[User is asking about boxplots for variables: "${varNames}"] ${userMessage || 'Please analyze these boxplots.'}`
       }
-      
+
       const response = await api.chat(fileId, aiMessage, fileName)
-      
+
       const assistantMsg: ChatMessage = {
         id: (Date.now() + 1).toString(),
         role: 'assistant',
@@ -195,7 +207,7 @@ export function AISidebar() {
       mediaRecorder.onstop = async () => {
         const audioBlob = new Blob(audioChunksRef.current, { type: 'audio/webm' })
         stream.getTracks().forEach(track => track.stop())
-        
+
         // Transcribe
         setLoading(true)
         try {
@@ -224,36 +236,38 @@ export function AISidebar() {
 
   const handleFileSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0]
-    if (file) {
+    if (!file) return
+
+    // Check if it's an image - add to array
+    if (file.type.startsWith('image/')) {
+      const reader = new FileReader()
+      reader.onload = () => {
+        setImageAttachments(prev => {
+          if (prev.length >= 10) return prev
+          return [...prev, {
+            data: reader.result as string,
+            name: file.name,
+          }]
+        })
+      }
+      reader.readAsDataURL(file)
+    } else {
+      // Handle as regular file attachment
       setAttachment(file)
     }
   }
 
-  const handleImageSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0]
-    if (file && file.type.startsWith('image/')) {
-      const reader = new FileReader()
-      reader.onload = () => {
-        setImageAttachment({
-          data: reader.result as string,
-          name: file.name,
-        })
-      }
-      reader.readAsDataURL(file)
-    }
-  }
-
   return (
-    <div className="h-full bg-surface-raised border-l border-border flex flex-col">
+    <div className="h-full w-full bg-surface-raised border-l border-border flex flex-col">
       {/* Header */}
-      <div className="px-4 py-3 border-b border-border flex items-center gap-2">
+      <div className="w-full px-4 py-3 border-b border-border flex items-center gap-2 flex-shrink-0">
         <div className="p-1.5 rounded bg-accent/10">
           <Sparkles className="h-4 w-4 text-accent" />
         </div>
-        <span className="font-semibold text-text-primary">{t('ai.title')}</span>
-        
+        <span className="font-semibold text-text-primary truncate">{t('ai.title')}</span>
+
         {hasContext && (
-          <span className="ml-auto text-2xs px-2 py-0.5 rounded-full bg-success/10 text-success flex items-center gap-1">
+          <span className="ml-auto text-2xs px-2 py-0.5 rounded-full bg-success/10 text-success flex items-center gap-1 flex-shrink-0">
             <CheckCircle2 className="h-3 w-3" />
             {contextType?.toUpperCase()}
           </span>
@@ -261,139 +275,187 @@ export function AISidebar() {
       </div>
 
       {/* Messages */}
-      <ScrollArea className="flex-1" ref={scrollRef}>
-        <div className="p-4 space-y-4">
+      <ScrollArea className="flex-1 w-full min-h-0" ref={scrollRef}>
+        <div className="w-full max-w-full p-4 space-y-4">
           {messages.length === 0 ? (
             <EmptyState hasContext={hasContext} />
           ) : (
             <AnimatePresence mode="popLayout">
               {messages.map((message) => (
-                <MessageBubble key={message.id} message={message} />
-              ))}
-              {loading && (
-                <motion.div
-                  initial={{ opacity: 0, y: 10 }}
-                  animate={{ opacity: 1, y: 0 }}
-                  className="flex items-center gap-2 text-text-muted"
-                >
-                  <Loader2 className="h-4 w-4 animate-spin" />
-                  <span className="text-sm">{t('app.loading')}</span>
-                </motion.div>
-              )}
-            </AnimatePresence>
+                <MessageBubble
+                  key={message.id}
+                  message={message}
+                  onImageClick={(src) => setPreviewImage(src)}
+                />
+              ))}    </AnimatePresence>
+          )}
+          {loading && (
+            <motion.div
+              initial={{ opacity: 0, y: 10 }}
+              animate={{ opacity: 1, y: 0 }}
+              className="flex items-center gap-2 text-text-muted"
+            >
+              <Loader2 className="h-4 w-4 animate-spin" />
+              <span className="text-sm">{t('app.loading')}</span>
+            </motion.div>
           )}
         </div>
       </ScrollArea>
 
-      {/* Image attachment preview */}
-      {imageAttachment && (
-        <div className="px-4 pb-2">
-          <div className="relative bg-surface-overlay rounded-lg overflow-hidden">
-            <img 
-              src={imageAttachment.data} 
-              alt={imageAttachment.name}
-              className="w-full h-32 object-contain bg-surface"
-            />
-            <div className="absolute top-2 right-2">
-              <button 
-                onClick={() => setImageAttachment(null)}
-                className="p-1 bg-surface/80 rounded-full hover:bg-surface"
+      {/* ChatGPT-style Attachment Preview Bar */}
+      {(attachment || imageAttachments.length > 0) && (
+        <div className="px-4 pb-3 pt-2 border-t border-border">
+          <div style={{ display: 'flex', flexDirection: 'row', alignItems: 'center', gap: '12px', flexWrap: 'wrap' }}>
+            {/* Document attachment chip */}
+            {attachment && (
+              <div
+                className="flex items-center gap-2 px-3 py-2 bg-accent/10 border border-accent/20 rounded-xl"
+                style={{ maxWidth: '200px' }}
               >
-                <X className="h-4 w-4 text-text-muted hover:text-text-primary" />
-              </button>
-            </div>
-            <div className="px-3 py-2 flex items-center gap-2 text-sm">
-              <ImageIcon className="h-4 w-4 text-accent" />
-              <span className="flex-1 truncate text-text-secondary">
-                {imageAttachment.variableName || imageAttachment.name}
-              </span>
-            </div>
+                <div className="w-8 h-8 rounded-lg bg-accent flex items-center justify-center flex-shrink-0">
+                  <FileText className="h-4 w-4 text-white" />
+                </div>
+                <div className="flex-1 min-w-0">
+                  <p className="text-xs font-medium text-text-primary truncate">
+                    {attachment.name}
+                  </p>
+                  <p className="text-2xs text-text-muted">
+                    {attachment.type?.split('/')[1]?.toUpperCase() || 'File'}
+                  </p>
+                </div>
+                <button
+                  onClick={() => setAttachment(null)}
+                  className="p-1 hover:bg-surface-overlay rounded-full flex-shrink-0"
+                >
+                  <X className="h-3 w-3 text-text-muted hover:text-text-primary" />
+                </button>
+              </div>
+            )}
+
+            {/* Image/Boxplot thumbnails - now shows ALL */}
+            {imageAttachments.map((img, index) => (
+              <div
+                key={index}
+                className="relative group rounded-xl overflow-hidden border border-border cursor-pointer"
+                style={{ width: '80px', height: '60px' }}
+                onClick={() => setPreviewImage(img.data)}
+              >
+                <img
+                  src={img.data}
+                  alt={img.name}
+                  className="w-full h-full object-cover"
+                />
+                <button
+                  onClick={(e) => {
+                    e.stopPropagation()
+                    setImageAttachments(prev => prev.filter((_, i) => i !== index))
+                  }}
+                  className="absolute top-1 right-1 p-0.5 bg-black/60 rounded-full opacity-0 group-hover:opacity-100 transition-opacity"
+                >
+                  <X className="h-3 w-3 text-white" />
+                </button>
+                {img.variableName && (
+                  <div className="absolute bottom-0 left-0 right-0 bg-black/60 px-1 py-0.5">
+                    <p className="text-2xs text-white truncate text-center">
+                      {img.variableName}
+                    </p>
+                  </div>
+                )}
+              </div>
+            ))}
           </div>
         </div>
       )}
-      
-      {/* File attachment preview */}
-      {attachment && !imageAttachment && (
-        <div className="px-4 pb-2">
-          <div className="flex items-center gap-2 px-3 py-2 bg-surface-overlay rounded-lg text-sm">
-            <FileText className="h-4 w-4 text-accent" />
-            <span className="flex-1 truncate">{attachment.name}</span>
-            <button onClick={() => setAttachment(null)}>
-              <X className="h-4 w-4 text-text-muted hover:text-text-primary" />
+
+      {/* Image Preview Modal */}
+      {previewImage && (
+        <div
+          className="fixed inset-0 bg-black/80 z-50 flex items-center justify-center p-4"
+          onClick={() => setPreviewImage(null)}
+        >
+          <div className="relative max-w-4xl max-h-[90vh]">
+            <img src={previewImage} alt="Preview" className="max-w-full max-h-[90vh] object-contain rounded-lg" />
+            <button
+              onClick={() => setPreviewImage(null)}
+              className="absolute top-2 right-2 p-2 bg-black/60 rounded-full hover:bg-black/80"
+            >
+              <X className="h-5 w-5 text-white" />
             </button>
           </div>
         </div>
       )}
 
       {/* Input */}
-      <form onSubmit={handleSubmit} className="p-4 border-t border-border">
+      <form onSubmit={handleSubmit} className="p-4 border-t border-border flex-shrink-0">
         <div className="relative">
-          <input
-            type="text"
+          <textarea
+            ref={(el) => {
+              if (el) {
+                // Auto-resize textarea
+                el.style.height = 'auto'
+                el.style.height = Math.min(el.scrollHeight, 120) + 'px'
+              }
+            }}
             value={input}
-            onChange={(e: React.ChangeEvent<HTMLInputElement>) => setInput(e.target.value)}
+            onChange={(e: React.ChangeEvent<HTMLTextAreaElement>) => {
+              setInput(e.target.value)
+              // Auto-resize on change
+              e.target.style.height = 'auto'
+              e.target.style.height = Math.min(e.target.scrollHeight, 120) + 'px'
+            }}
+            onKeyDown={(e) => {
+              // Submit on Enter (without Shift)
+              if (e.key === 'Enter' && !e.shiftKey) {
+                e.preventDefault()
+                handleSubmit(e as any)
+              }
+            }}
             placeholder={t('ai.placeholder')}
             disabled={loading}
+            rows={1}
+            style={{
+              scrollbarWidth: 'none', // Firefox
+              msOverflowStyle: 'none', // IE
+            } as React.CSSProperties}
             className={cn(
-              'w-full h-10 pl-4 pr-28 rounded-lg text-sm',
+              'w-full min-h-[40px] max-h-[120px] pl-4 pr-28 py-2.5 rounded-lg text-sm resize-none',
               'bg-surface border border-border text-text-primary',
               'placeholder:text-text-muted',
               'focus:outline-none focus:ring-2 focus:ring-accent/50 focus:border-accent',
-              'disabled:opacity-50'
+              'disabled:opacity-50',
+              '[&::-webkit-scrollbar]:hidden' // Chrome, Safari
             )}
           />
-          <div className="absolute right-2 top-1/2 -translate-y-1/2 flex items-center gap-1">
-            {/* Image attachment */}
-            <input
-              ref={imageInputRef}
-              type="file"
-              className="hidden"
-              onChange={handleImageSelect}
-              accept="image/*"
-            />
-            <button
-              type="button"
-              className={cn(
-                'p-1.5 rounded transition-colors',
-                imageAttachment 
-                  ? 'bg-accent/20 text-accent' 
-                  : 'hover:bg-surface-overlay text-text-muted'
-              )}
-              onClick={() => imageInputRef.current?.click()}
-              title="Attach image"
-            >
-              <ImageIcon className="h-4 w-4" />
-            </button>
-            
-            {/* File attachment */}
+          <div className="absolute right-2 bottom-2 flex items-center gap-1">
+            {/* File attachment (includes images) */}
             <input
               ref={fileInputRef}
               type="file"
               className="hidden"
               onChange={handleFileSelect}
-              accept=".csv,.xlsx,.xls,.txt,.pdf"
+              accept="image/*,.csv,.xlsx,.xls,.txt,.pdf"
             />
             <button
               type="button"
               className={cn(
                 'p-1.5 rounded transition-colors',
-                attachment 
-                  ? 'bg-accent/20 text-accent' 
+                (attachment || imageAttachments.length > 0)
+                  ? 'bg-accent/20 text-accent'
                   : 'hover:bg-surface-overlay text-text-muted'
               )}
               onClick={() => fileInputRef.current?.click()}
-              title="Attach file"
+              title="Attach file or image"
             >
               <Paperclip className="h-4 w-4" />
             </button>
-            
+
             {/* Voice recording */}
             <button
               type="button"
               className={cn(
                 'p-1.5 rounded transition-colors',
-                recording 
-                  ? 'bg-error/20 text-error animate-pulse' 
+                recording
+                  ? 'bg-error/20 text-error animate-pulse'
                   : 'hover:bg-surface-overlay text-text-muted'
               )}
               onClick={recording ? stopRecording : startRecording}
@@ -401,12 +463,12 @@ export function AISidebar() {
             >
               {recording ? <MicOff className="h-4 w-4" /> : <Mic className="h-4 w-4" />}
             </button>
-            
+
             {/* Send */}
             <Button
               type="submit"
               size="icon-sm"
-              disabled={(!input.trim() && !attachment && !imageAttachment) || loading}
+              disabled={(!input.trim() && !attachment && imageAttachments.length === 0) || loading}
               className="ml-1"
             >
               <Send className="h-4 w-4" />
@@ -427,7 +489,7 @@ function EmptyState({ hasContext }: { hasContext: boolean }) {
         <Sparkles className="h-6 w-6 text-accent" />
       </div>
       <h3 className="font-semibold text-text-primary mb-2">{t('ai.title')}</h3>
-      
+
       {hasContext ? (
         <div className="space-y-2">
           <p className="text-sm text-success flex items-center justify-center gap-1">
@@ -453,21 +515,36 @@ function EmptyState({ hasContext }: { hasContext: boolean }) {
   )
 }
 
-function MessageBubble({ message }: { message: ChatMessage }) {
+function MessageBubble({ message, onImageClick }: { message: ChatMessage; onImageClick: (src: string) => void }) {
   const isUser = message.role === 'user'
+
+  // Combine legacy single attachment with new array if needed
+  const images = message.attachments ||
+    (message.attachment?.imageData ? [{
+      name: message.attachment.name,
+      imageData: message.attachment.imageData,
+      type: 'image/png'
+    }] : [])
 
   return (
     <motion.div
       initial={{ opacity: 0, y: 10 }}
       animate={{ opacity: 1, y: 0 }}
       exit={{ opacity: 0, y: -10 }}
-      className={cn('flex gap-3', isUser && 'flex-row-reverse')}
+      className={cn('flex gap-2', isUser && 'flex-row-reverse')}
+      style={{
+        width: '100%',
+        maxWidth: '100%',
+        contain: 'layout'
+      }}
     >
+      {/* Avatar */}
       <div
         className={cn(
-          'w-7 h-7 rounded-lg flex items-center justify-center flex-shrink-0',
+          'w-7 h-7 rounded-lg flex items-center justify-center',
           isUser ? 'bg-accent/10' : 'bg-surface-overlay'
         )}
+        style={{ flexShrink: 0 }}
       >
         {isUser ? (
           <User className="h-4 w-4 text-accent" />
@@ -475,65 +552,129 @@ function MessageBubble({ message }: { message: ChatMessage }) {
           <Bot className="h-4 w-4 text-text-secondary" />
         )}
       </div>
+
+      {/* Message content */}
       <div
         className={cn(
-          'flex-1 rounded-lg text-sm overflow-hidden',
+          'rounded-lg text-sm',
           isUser
-            ? 'bg-accent text-surface-raised'
+            ? 'bg-accent text-gray-900'
             : 'bg-surface-overlay text-text-primary'
         )}
+        style={{
+          flex: '1 1 0%',
+          minWidth: 0,
+          maxWidth: 'calc(100% - 36px)',
+          overflow: 'hidden',
+          wordBreak: 'break-word',
+          overflowWrap: 'anywhere'
+        }}
       >
-        {/* Image attachment */}
-        {message.attachment?.imageData && (
-          <div className="w-full">
-            <img 
-              src={message.attachment.imageData} 
-              alt={message.attachment.name}
-              className="w-full h-auto max-h-48 object-contain bg-surface"
-            />
+        {/* Images Grid */}
+        {images.length > 0 && (
+          <div style={{
+            width: '100%',
+            overflow: 'hidden',
+            display: 'grid',
+            gridTemplateColumns: images.length === 1 ? '1fr' : 'repeat(auto-fit, minmax(120px, 1fr))',
+            gap: '2px'
+          }}>
+            {images.map((img, i) => (
+              <div
+                key={i}
+                className="cursor-pointer hover:opacity-90 transition-opacity relative group"
+                onClick={() => img.imageData && onImageClick(img.imageData)}
+                style={{ aspectRatio: images.length === 1 ? 'auto' : '1' }}
+              >
+                <img
+                  src={img.imageData}
+                  alt={img.name}
+                  style={{
+                    width: '100%',
+                    height: '100%',
+                    maxHeight: images.length === 1 ? '300px' : 'none',
+                    objectFit: images.length === 1 ? 'contain' : 'cover',
+                    background: 'rgba(0,0,0,0.1)'
+                  }}
+                />
+              </div>
+            ))}
           </div>
         )}
-        
-        <div className="px-3 py-2">
+
+        <div style={{ width: '100%', padding: '8px 12px', overflow: 'hidden' }}>
           {/* File attachment badge (non-image) */}
           {message.attachment && !message.attachment.imageData && (
             <div className="flex items-center gap-1 mb-1 text-xs opacity-70">
-              <FileText className="h-3 w-3" />
-              {message.attachment.name}
+              <FileText className="h-3 w-3" style={{ flexShrink: 0 }} />
+              <span style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                {message.attachment.name}
+              </span>
             </div>
           )}
-          
-          {/* Message content with markdown */}
-          <MarkdownContent content={message.content} />
+
+          {/* Message content - only show if there is text or if it's not just an image wrapper */}
+          {(message.content || (!message.attachment && images.length === 0)) && (
+            <MarkdownContent content={message.content} isUser={isUser} />
+          )}
         </div>
       </div>
     </motion.div>
   )
 }
 
-function MarkdownContent({ content }: { content: string }) {
-  // Simple markdown parsing
+function MarkdownContent({ content, isUser }: { content: string; isUser: boolean }) {
   const parseMarkdown = (text: string) => {
-    // Bold
-    text = text.replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>')
-    // Italic
-    text = text.replace(/\*(.*?)\*/g, '<em>$1</em>')
     // Code blocks
-    text = text.replace(/```([\s\S]*?)```/g, '<pre class="bg-surface/50 p-2 rounded my-2 text-xs overflow-x-auto"><code>$1</code></pre>')
+    text = text.replace(
+      /```([\s\S]*?)```/g,
+      '<pre style="background:#1a1d23;border-left:2px solid #2dd4bf;padding:12px;border-radius:6px;margin:8px 0;font-size:11px;overflow-x:auto;font-family:monospace;color:#2dd4bf;white-space:pre-wrap;word-break:break-all"><code>$1</code></pre>'
+    )
+
+    // Headers
+    text = text.replace(/^### (.*?)$/gm, '<h3 style="font-size:14px;font-weight:700;margin:16px 0 8px">$1</h3>')
+    text = text.replace(/^## (.*?)$/gm, '<h2 style="font-size:16px;font-weight:700;margin:16px 0 8px">$1</h2>')
+    text = text.replace(/^# (.*?)$/gm, '<h1 style="font-size:18px;font-weight:700;margin:16px 0 12px">$1</h1>')
+
+    // Bold & italic
+    text = text.replace(/\*\*([^*]+?)\*\*/g, '<strong style="font-weight:600">$1</strong>')
+    text = text.replace(/\*([^*]+?)\*/g, '<em>$1</em>')
+
     // Inline code
-    text = text.replace(/`(.*?)`/g, '<code class="bg-surface/30 px-1 rounded text-xs">$1</code>')
+    text = text.replace(
+      /`([^`]+?)`/g,
+      '<code style="background:rgba(45,212,191,0.1);color:#2dd4bf;padding:2px 6px;border-radius:4px;font-size:11px;font-family:monospace;border:1px solid rgba(45,212,191,0.2)">$1</code>'
+    )
+
     // Lists
-    text = text.replace(/^- (.*?)$/gm, '<li class="ml-4">$1</li>')
-    text = text.replace(/(<li.*<\/li>\n?)+/g, '<ul class="list-disc my-2">$&</ul>')
+    text = text.replace(/^\d+\. (.*?)$/gm, '<li style="margin-left:16px">$1</li>')
+    text = text.replace(/^- (.*?)$/gm, '<li style="margin-left:16px">$1</li>')
+    text = text.replace(/(<li.*<\/li>\n?)+/g, '<ul style="list-style:disc;margin:8px 0 8px 16px">$&</ul>')
+
     // Line breaks
+    text = text.replace(/\n\n/g, '</p><p style="margin:8px 0">')
     text = text.replace(/\n/g, '<br/>')
-    
+
+    if (!text.startsWith('<')) {
+      text = '<p style="margin:8px 0">' + text + '</p>'
+    }
+
     return text
   }
 
   return (
-    <div 
-      className="prose prose-sm max-w-none"
+    <div
+      style={{
+        width: '100%',
+        maxWidth: '100%',
+        overflow: 'hidden',
+        wordBreak: 'break-word',
+        overflowWrap: 'anywhere',
+        whiteSpace: 'pre-wrap',
+        lineHeight: 1.6,
+        fontSize: '13px',
+        color: isUser ? '#111827' : '#94a3b8'
+      }}
       dangerouslySetInnerHTML={{ __html: parseMarkdown(content) }}
     />
   )

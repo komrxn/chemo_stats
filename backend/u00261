@@ -1,0 +1,40 @@
+2025-12-09 11:07:18,251 - __main__ - INFO - ======================================================================
+2025-12-09 11:07:18,251 - __main__ - INFO - 🚀 RAG Setup: Building Vector Database
+2025-12-09 11:07:18,251 - __main__ - INFO - ======================================================================
+2025-12-09 11:07:18,251 - __main__ - INFO - 📂 Materials directory: /Users/macbro/Projects/Dad's/uploaded files 2
+2025-12-09 11:07:18,251 - __main__ - INFO - 💾 Output path: /Users/macbro/Projects/Dad's/kkh-analysis/backend/rag_db/faiss_index
+2025-12-09 11:07:18,251 - __main__ - INFO - 
+2025-12-09 11:07:18,251 - __main__ - INFO - Step 1/3: Processing documents...
+2025-12-09 11:07:18,251 - rag.document_processor - INFO - 📚 Processing documents from /Users/macbro/Projects/Dad's/uploaded files 2
+2025-12-09 11:07:18,252 - rag.document_processor - INFO -   📄 Processing Fisher 1921.pdf...
+2025-12-09 11:07:22,592 - rag.document_processor - INFO -     ✅ Extracted 39 chunks
+2025-12-09 11:07:22,592 - rag.document_processor - INFO -   📄 Processing Fisher 1925.pdf...
+2025-12-09 11:07:24,180 - rag.document_processor - INFO -     ✅ Extracted 309 chunks
+2025-12-09 11:07:24,180 - rag.document_processor - INFO -   📄 Processing Fisher 1918.pdf...
+2025-12-09 11:07:24,462 - rag.document_processor - WARNING -     ⚠️ No text extracted from Fisher 1918.pdf
+2025-12-09 11:07:24,462 - rag.document_processor - INFO -   📄 Processing Design and Analysis of Experiments by Montgomery.pdf...
+2025-12-09 11:07:29,225 - rag.document_processor - INFO -     ✅ Extracted 1409 chunks
+2025-12-09 11:07:29,225 - rag.document_processor - INFO -   📄 Processing one way anova_bkh.pdf...
+2025-12-09 11:07:29,357 - rag.document_processor - INFO -     ✅ Extracted 11 chunks
+2025-12-09 11:07:29,357 - rag.document_processor - INFO -   📄 Processing Applied Linear Statistical Models.pdf...
+2025-12-09 11:08:33,119 - rag.document_processor - INFO -     ✅ Extracted 2108 chunks
+2025-12-09 11:08:33,119 - rag.document_processor - INFO -   📄 Processing Anova_ultimate_guide-final by GraphPad.pdf...
+2025-12-09 11:08:33,247 - rag.document_processor - INFO -     ✅ Extracted 15 chunks
+2025-12-09 11:08:33,247 - rag.document_processor - INFO -   📄 Processing ANOVA - Text for Instruction part.docx...
+2025-12-09 11:08:33,250 - rag.document_processor - INFO -     ✅ Extracted 1 chunks
+2025-12-09 11:08:33,250 - rag.document_processor - INFO - ✅ Total chunks extracted: 3892
+2025-12-09 11:08:33,250 - __main__ - INFO - ✅ Extracted 3892 text chunks
+2025-12-09 11:08:33,250 - __main__ - INFO - 
+2025-12-09 11:08:33,250 - __main__ - INFO - Step 2/3: Building FAISS index...
+2025-12-09 11:08:33,250 - __main__ - INFO - ⚠️  This will make OpenAI API calls for embeddings (~$0.025 cost)
+2025-12-09 11:08:33,250 - __main__ - ERROR - ❌ Setup failed: The api_key client option must be set either by passing api_key to the client or by setting the OPENAI_API_KEY environment variable
+Traceback (most recent call last):
+  File "/Users/macbro/Projects/Dad's/kkh-analysis/backend/setup_rag.py", line 64, in main
+    vectorstore = FAISSVectorStore()
+                  ^^^^^^^^^^^^^^^^^^
+  File "/Users/macbro/Projects/Dad's/kkh-analysis/backend/rag/vectorstore.py", line 26, in __init__
+    self.client = OpenAI()
+                  ^^^^^^^^
+  File "/Users/macbro/.pyenv/versions/3.11.9/lib/python3.11/site-packages/openai/_client.py", line 137, in __init__
+    raise OpenAIError(
+openai.OpenAIError: The api_key client option must be set either by passing api_key to the client or by setting the OPENAI_API_KEY environment variable

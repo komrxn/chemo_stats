@@ -99,6 +99,7 @@ export const ru = {
   'results.significant': 'Значимая',
   'results.notSignificant': 'Нет',
   'results.topSignificant': 'Топ значимых переменных',
+  'results.significantVariables': 'Значимые переменные',
   'results.observations': 'наблюдений',
   'results.median': 'Медиана',
   'results.range': 'Диапазон',

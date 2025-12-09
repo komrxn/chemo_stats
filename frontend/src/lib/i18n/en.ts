@@ -99,6 +99,7 @@ export const en = {
   'results.significant': 'Significant',
   'results.notSignificant': 'No',
   'results.topSignificant': 'Top Significant Variables',
+  'results.significantVariables': 'Significant Variables',
   'results.observations': 'observations',
   'results.median': 'Median',
   'results.range': 'Range',

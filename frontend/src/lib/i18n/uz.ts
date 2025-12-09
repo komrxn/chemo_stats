@@ -99,6 +99,7 @@ export const uz = {
   'results.significant': 'Muhim',
   'results.notSignificant': 'Yo\'q',
   'results.topSignificant': 'Eng muhim o\'zgaruvchilar',
+  'results.significantVariables': 'Muhim o\'zgaruvchilar',
   'results.observations': 'kuzatuvlar',
   'results.median': 'Mediana',
   'results.range': 'Diapazon',

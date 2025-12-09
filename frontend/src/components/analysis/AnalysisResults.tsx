@@ -26,7 +26,7 @@ function AnovaResultsView({ results }: { results: AnovaResults }) {
   const { summary, boxplotData } = results
   const leftSidebarOpen = useAppStore((s) => s.leftSidebarOpen)
   const rightSidebarOpen = useAppStore((s) => s.rightSidebarOpen)
-  
+
   // Calculate grid columns based on sidebars state
   const bothClosed = !leftSidebarOpen && !rightSidebarOpen
   const oneClosed = !leftSidebarOpen || !rightSidebarOpen
@@ -75,14 +75,14 @@ function AnovaResultsView({ results }: { results: AnovaResults }) {
       {Object.keys(boxplotData).length > 0 && (
         <div className="space-y-6">
           <h2 className="text-lg font-semibold text-text-primary">
-            {t('results.topSignificant')}
+            {t('results.significantVariables')}
           </h2>
           {/* Adaptive grid: 2 cols when both sidebars closed, 1 col otherwise */}
           <div className={cn(
             "grid gap-6",
             bothClosed ? "grid-cols-1 xl:grid-cols-2" : "grid-cols-1"
           )}>
-            {Object.entries(boxplotData).slice(0, 6).map(([key, data], idx) => {
+            {Object.entries(boxplotData).map(([key, data], idx) => {
               const result = results.results[idx]
               return (
                 <BoxPlotChart
@@ -139,7 +139,7 @@ function PcaResultsView({ results }: { results: PcaResults }) {
       </div>
 
       {/* Coming Soon Placeholder */}
-      <motion.div 
+      <motion.div
         initial={{ opacity: 0, y: 20 }}
         animate={{ opacity: 1, y: 0 }}
         className="card"
@@ -147,11 +147,11 @@ function PcaResultsView({ results }: { results: PcaResults }) {
         <div className="card-content py-16">
           <div className="flex flex-col items-center justify-center text-center">
             <motion.div
-              animate={{ 
+              animate={{
                 rotate: [0, 10, -10, 10, 0],
                 scale: [1, 1.1, 1]
               }}
-              transition={{ 
+              transition={{
                 duration: 2,
                 repeat: Infinity,
                 repeatDelay: 3
@@ -160,7 +160,7 @@ function PcaResultsView({ results }: { results: PcaResults }) {
             >
               <Layers className="h-12 w-12 text-accent" />
             </motion.div>
-            
+
             <div className="flex items-center gap-2 mb-3">
               <Sparkles className="h-5 w-5 text-warning" />
               <h3 className="text-xl font-bold text-text-primary">
@@ -168,7 +168,7 @@ function PcaResultsView({ results }: { results: PcaResults }) {
               </h3>
               <Sparkles className="h-5 w-5 text-warning" />
             </div>
-            
+
             <p className="text-text-secondary max-w-md">
               {t('pca.comingSoonDesc')}
             </p>
