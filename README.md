@@ -284,8 +284,20 @@ proxy: {
 
 ## 👥 Authors
 
-**KKH Analysis Team**
+**Bekzod Khakimov
+Associate Professor
+Chemometrics and Analytical Technology Research Group
+Deprtment of Food Science, University of Copenhagen
+Rolighedsvej 26, Frederiksberg, 1958, Denmark
+Office: +45 3532-8184, Mobile: +45 2887-4454
+Email: bzo@food.ku.dk**
 
+**Komron Khakimov
+Bachelor Student, 
+Chemometrics and Analytical Technology Research Group
+Software Engeneer, IT PARK UNIVERSITY (by EPAM)
+Mobile: +998 90 811 27 29
+Email: komronkhakimov17@gmail.com**
 ---
 
 ## 📄 License
