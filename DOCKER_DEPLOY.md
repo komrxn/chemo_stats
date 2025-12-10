@@ -1,3 +1,7 @@
+docker exec kkh-db psql -U postgres -d kkh_analysis -c "UPDATE \"user\" SET is_approved = true WHERE email = 'email';"
+
+docker exec kkh-db psql -U postgres -d kkh_analysis -c "UPDATE \"user\" SET is_superuser = true WHERE email = 'email';"
+
 # Docker Deployment Guide
 
 ## Quick Start

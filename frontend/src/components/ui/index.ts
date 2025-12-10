@@ -4,4 +4,5 @@ export * from './Select'
 export * from './Dialog'
 export * from './ScrollArea'
 export * from './Tooltip'
+export * from './Label'
 

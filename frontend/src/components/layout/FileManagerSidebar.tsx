@@ -15,8 +15,11 @@ import {
   X,
   Loader2,
   Upload,
+  LogOut,
 } from 'lucide-react'
+import { useNavigate } from 'react-router-dom'
 import { useAppStore } from '@/store'
+import { useAuthStore } from '@/store/authStore'
 import { useTranslation } from '@/lib/i18n'
 import { api } from '@/lib/api'
 import { Button } from '@/components/ui/Button'
@@ -99,6 +102,53 @@ export function FileManagerSidebar() {
           )}
         </div>
       </ScrollArea>
+
+      {/* User Footer */}
+      <div className="p-3 border-t border-border mt-auto">
+        <UserFooter />
+      </div>
+    </div>
+  )
+}
+
+function UserFooter() {
+  const user = useAuthStore((s) => s.user)
+  const logout = useAuthStore((s) => s.logout)
+  const navigate = useNavigate()
+
+  const handleLogout = () => {
+    logout()
+    navigate('/login')
+  }
+
+  return (
+    <div className="space-y-2">
+      {user?.is_superuser && (
+        <Button
+          variant="outline"
+          className="w-full justify-start gap-2 text-warning hover:text-warning"
+          onClick={() => navigate('/admin')}
+        >
+          <FolderOpen className="h-4 w-4" />
+          Admin Panel
+        </Button>
+      )}
+
+      <div className="flex items-center justify-between gap-2 px-2 py-2 rounded bg-surface-overlay/30">
+        <div className="flex flex-col min-w-0">
+          <span className="text-xs font-medium truncate text-text-primary">{user?.email}</span>
+          <span className="text-[10px] text-text-muted capitalize">{user?.is_superuser ? 'Super Admin' : 'User'}</span>
+        </div>
+        <Button
+          variant="ghost"
+          size="icon"
+          className="h-8 w-8 text-text-muted hover:text-error"
+          onClick={handleLogout}
+          title="Logout"
+        >
+          <LogOut className="h-4 w-4" />
+        </Button>
+      </div>
     </div>
   )
 }
@@ -201,139 +251,139 @@ function ProjectItem({
     >
       <div {...getRootProps()}>
         <input {...getInputProps()} />
-      
-      {/* Project Header */}
-      <div
-        className={cn(
-          'group flex items-center gap-1 px-2 py-1.5 rounded cursor-pointer transition-colors',
-          isActive ? 'bg-surface-overlay text-text-primary' : 'hover:bg-surface-overlay/50 text-text-secondary',
-          isDragActive && 'ring-2 ring-accent bg-accent/10'
-        )}
-        onClick={() => {
-          if (!editing) {
-            onSelect()
-            setExpanded(!expanded)
-          }
-        }}
-        onMouseEnter={() => setShowMenu(true)}
-        onMouseLeave={() => setShowMenu(false)}
-      >
-        <motion.div
-          animate={{ rotate: expanded ? 90 : 0 }}
-          transition={{ duration: 0.15 }}
+
+        {/* Project Header */}
+        <div
+          className={cn(
+            'group flex items-center gap-1 px-2 py-1.5 rounded cursor-pointer transition-colors',
+            isActive ? 'bg-surface-overlay text-text-primary' : 'hover:bg-surface-overlay/50 text-text-secondary',
+            isDragActive && 'ring-2 ring-accent bg-accent/10'
+          )}
+          onClick={() => {
+            if (!editing) {
+              onSelect()
+              setExpanded(!expanded)
+            }
+          }}
+          onMouseEnter={() => setShowMenu(true)}
+          onMouseLeave={() => setShowMenu(false)}
         >
-          <ChevronRight className="h-3.5 w-3.5 text-text-muted" />
-        </motion.div>
-        <FolderOpen className="h-4 w-4 text-accent flex-shrink-0" />
-        
-        {editing ? (
-          <div className="flex items-center gap-1 flex-1" onClick={(e) => e.stopPropagation()}>
-            <Input
-              value={editName}
-              onChange={(e: React.ChangeEvent<HTMLInputElement>) => setEditName(e.target.value)}
-              className="h-6 text-sm px-1"
-              autoFocus
-              onKeyDown={(e: React.KeyboardEvent<HTMLInputElement>) => {
-                if (e.key === 'Enter') handleSaveRename()
-                if (e.key === 'Escape') setEditing(false)
-              }}
-            />
-            <button onClick={handleSaveRename} className="p-0.5 hover:bg-surface rounded">
-              <Check className="h-3.5 w-3.5 text-success" />
-            </button>
-            <button onClick={() => setEditing(false)} className="p-0.5 hover:bg-surface rounded">
-              <X className="h-3.5 w-3.5 text-text-muted" />
-            </button>
-          </div>
-        ) : (
-          <span className="flex-1 text-sm truncate">{project.name}</span>
-        )}
-        
-        {/* Action buttons */}
-        <AnimatePresence>
-          {showMenu && !editing && (
-            <motion.div
-              initial={{ opacity: 0 }}
-              animate={{ opacity: 1 }}
-              exit={{ opacity: 0 }}
-              className="flex items-center gap-0.5"
-              onClick={(e) => e.stopPropagation()}
-            >
-              {uploading && <Loader2 className="h-3.5 w-3.5 animate-spin text-accent" />}
-              <button
-                className="p-1 hover:bg-surface rounded"
-                title={t('files.newFolder')}
-                onClick={() => onCreateFolder(null)}
-              >
-                <FolderPlus className="h-3.5 w-3.5 text-text-muted hover:text-accent" />
-              </button>
-              <button
-                className="p-1 hover:bg-surface rounded"
-                title={t('app.rename')}
-                onClick={() => {
-                  setEditName(project.name)
-                  setEditing(true)
+          <motion.div
+            animate={{ rotate: expanded ? 90 : 0 }}
+            transition={{ duration: 0.15 }}
+          >
+            <ChevronRight className="h-3.5 w-3.5 text-text-muted" />
+          </motion.div>
+          <FolderOpen className="h-4 w-4 text-accent flex-shrink-0" />
+
+          {editing ? (
+            <div className="flex items-center gap-1 flex-1" onClick={(e) => e.stopPropagation()}>
+              <Input
+                value={editName}
+                onChange={(e: React.ChangeEvent<HTMLInputElement>) => setEditName(e.target.value)}
+                className="h-6 text-sm px-1"
+                autoFocus
+                onKeyDown={(e: React.KeyboardEvent<HTMLInputElement>) => {
+                  if (e.key === 'Enter') handleSaveRename()
+                  if (e.key === 'Escape') setEditing(false)
                 }}
-              >
-                <Pencil className="h-3.5 w-3.5 text-text-muted hover:text-accent" />
+              />
+              <button onClick={handleSaveRename} className="p-0.5 hover:bg-surface rounded">
+                <Check className="h-3.5 w-3.5 text-success" />
               </button>
-              <button
-                className="p-1 hover:bg-surface rounded"
-                title={t('app.delete')}
-                onClick={onDelete}
-              >
-                <Trash2 className="h-3.5 w-3.5 text-text-muted hover:text-error" />
+              <button onClick={() => setEditing(false)} className="p-0.5 hover:bg-surface rounded">
+                <X className="h-3.5 w-3.5 text-text-muted" />
               </button>
+            </div>
+          ) : (
+            <span className="flex-1 text-sm truncate">{project.name}</span>
+          )}
+
+          {/* Action buttons */}
+          <AnimatePresence>
+            {showMenu && !editing && (
+              <motion.div
+                initial={{ opacity: 0 }}
+                animate={{ opacity: 1 }}
+                exit={{ opacity: 0 }}
+                className="flex items-center gap-0.5"
+                onClick={(e) => e.stopPropagation()}
+              >
+                {uploading && <Loader2 className="h-3.5 w-3.5 animate-spin text-accent" />}
+                <button
+                  className="p-1 hover:bg-surface rounded"
+                  title={t('files.newFolder')}
+                  onClick={() => onCreateFolder(null)}
+                >
+                  <FolderPlus className="h-3.5 w-3.5 text-text-muted hover:text-accent" />
+                </button>
+                <button
+                  className="p-1 hover:bg-surface rounded"
+                  title={t('app.rename')}
+                  onClick={() => {
+                    setEditName(project.name)
+                    setEditing(true)
+                  }}
+                >
+                  <Pencil className="h-3.5 w-3.5 text-text-muted hover:text-accent" />
+                </button>
+                <button
+                  className="p-1 hover:bg-surface rounded"
+                  title={t('app.delete')}
+                  onClick={onDelete}
+                >
+                  <Trash2 className="h-3.5 w-3.5 text-text-muted hover:text-error" />
+                </button>
+              </motion.div>
+            )}
+          </AnimatePresence>
+        </div>
+
+        {/* Content: Tables & Folders */}
+        <AnimatePresence>
+          {expanded && (
+            <motion.div
+              initial={{ height: 0, opacity: 0 }}
+              animate={{ height: 'auto', opacity: 1 }}
+              exit={{ height: 0, opacity: 0 }}
+              transition={{ duration: 0.2 }}
+              className="overflow-hidden"
+            >
+              <div className="ml-4 border-l border-border pl-2 py-1">
+                {/* Folders first */}
+                {project.folders.map((folder) => (
+                  <FolderItem
+                    key={folder.id}
+                    folder={folder}
+                    projectId={project.id}
+                    activeTableId={activeTableId}
+                    onSelectTable={onSelectTable}
+                    onCreateFolder={onCreateFolder}
+                  />
+                ))}
+
+                {/* Then tables */}
+                {project.tables.map((table) => (
+                  <TableItem
+                    key={table.id}
+                    table={table}
+                    projectId={project.id}
+                    isActive={table.id === activeTableId}
+                    onSelect={() => onSelectTable(table.id)}
+                    folderId={null}
+                  />
+                ))}
+
+                {/* Empty state */}
+                {project.folders.length === 0 && project.tables.length === 0 && (
+                  <div className="text-xs text-text-muted py-2 px-2">
+                    {t('files.dropHere')}
+                  </div>
+                )}
+              </div>
             </motion.div>
           )}
         </AnimatePresence>
-      </div>
-
-      {/* Content: Tables & Folders */}
-      <AnimatePresence>
-        {expanded && (
-          <motion.div
-            initial={{ height: 0, opacity: 0 }}
-            animate={{ height: 'auto', opacity: 1 }}
-            exit={{ height: 0, opacity: 0 }}
-            transition={{ duration: 0.2 }}
-            className="overflow-hidden"
-          >
-            <div className="ml-4 border-l border-border pl-2 py-1">
-              {/* Folders first */}
-              {project.folders.map((folder) => (
-                <FolderItem
-                  key={folder.id}
-                  folder={folder}
-                  projectId={project.id}
-                  activeTableId={activeTableId}
-                  onSelectTable={onSelectTable}
-                  onCreateFolder={onCreateFolder}
-                />
-              ))}
-              
-              {/* Then tables */}
-              {project.tables.map((table) => (
-                <TableItem
-                  key={table.id}
-                  table={table}
-                  projectId={project.id}
-                  isActive={table.id === activeTableId}
-                  onSelect={() => onSelectTable(table.id)}
-                  folderId={null}
-                />
-              ))}
-              
-              {/* Empty state */}
-              {project.folders.length === 0 && project.tables.length === 0 && (
-                <div className="text-xs text-text-muted py-2 px-2">
-                  {t('files.dropHere')}
-                </div>
-              )}
-            </div>
-          </motion.div>
-        )}
-      </AnimatePresence>
       </div>
     </motion.div>
   )
@@ -428,7 +478,7 @@ function FolderItem({
   return (
     <div className="mb-0.5" {...getRootProps()}>
       <input {...getInputProps()} />
-      
+
       <div
         className={cn(
           'group flex items-center gap-1 px-2 py-1 rounded cursor-pointer transition-colors text-sm',
@@ -446,7 +496,7 @@ function FolderItem({
           <ChevronRight className="h-3 w-3 text-text-muted" />
         </motion.div>
         <FolderOpen className="h-3.5 w-3.5 text-warning flex-shrink-0" />
-        
+
         {editing ? (
           <div className="flex items-center gap-1 flex-1" onClick={(e) => e.stopPropagation()}>
             <Input
@@ -466,7 +516,7 @@ function FolderItem({
         ) : (
           <span className="flex-1 truncate">{folder.name}</span>
         )}
-        
+
         <AnimatePresence>
           {showMenu && !editing && (
             <motion.div
@@ -592,7 +642,7 @@ function TableItem({ table, projectId, isActive, onSelect, folderId }: TableItem
       onMouseLeave={() => setShowMenu(false)}
     >
       <FileSpreadsheet className="h-3.5 w-3.5 flex-shrink-0" />
-      
+
       {editing ? (
         <div className="flex items-center gap-1 flex-1" onClick={(e) => e.stopPropagation()}>
           <Input

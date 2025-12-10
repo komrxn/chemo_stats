@@ -1,27 +1,34 @@
+import axios from 'axios'
+import { useAuthStore } from '../store/authStore'
+
 const API_URL = import.meta.env.VITE_API_URL || ''
 
-interface ApiError {
-  detail: string
-}
+const axiosInstance = axios.create({
+  baseURL: API_URL,
+})
 
-async function handleResponse<T>(response: Response): Promise<T> {
-  if (!response.ok) {
-    const error: ApiError = await response.json().catch(() => ({ detail: 'Request failed' }))
-    throw new Error(error.detail)
+axiosInstance.interceptors.request.use((config) => {
+  const token = useAuthStore.getState().token
+  if (token) {
+    config.headers.Authorization = `Bearer ${token}`
   }
-  return response.json()
-}
+  return config
+})
+
+axiosInstance.interceptors.response.use(
+  (response) => response.data,
+  (error) => {
+    const message = error.response?.data?.detail || 'Request failed'
+    return Promise.reject(new Error(message))
+  }
+)
 
 export const api = {
   async previewFile(file: File) {
     const formData = new FormData()
     formData.append('file', file)
-    
-    const response = await fetch(`${API_URL}/api/preview`, {
-      method: 'POST',
-      body: formData,
-    })
-    return handleResponse<PreviewResponse>(response)
+
+    return axiosInstance.post<PreviewResponse>('/api/preview', formData) as unknown as Promise<PreviewResponse>
   },
 
   async runAnova(file: File, params: AnovaParams) {
@@ -32,11 +39,7 @@ export const api = {
     formData.append('design_label', params.designLabel)
     formData.append('plot_option', params.plotOption.toString())
 
-    const response = await fetch(`${API_URL}/api/analyze/anova`, {
-      method: 'POST',
-      body: formData,
-    })
-    return handleResponse<AnovaResponse>(response)
+    return axiosInstance.post<AnovaResponse>('/api/analyze/anova', formData) as unknown as Promise<AnovaResponse>
   },
 
   async runPca(file: File, params: PcaParams) {
@@ -46,38 +49,22 @@ export const api = {
     formData.append('scaling_method', params.scalingMethod)
     formData.append('design_label', params.designLabel)
 
-    const response = await fetch(`${API_URL}/api/analyze/pca`, {
-      method: 'POST',
-      body: formData,
-    })
-    return handleResponse<PcaResponse>(response)
+    return axiosInstance.post<PcaResponse>('/api/analyze/pca', formData) as unknown as Promise<PcaResponse>
   },
 
   async exportAnova(data: AnovaResponse) {
-    const response = await fetch(`${API_URL}/api/export/anova`, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify(data),
+    const response = await axiosInstance.post('/api/export/anova', data, {
+      responseType: 'blob'
     })
-
-    if (!response.ok) {
-      throw new Error('Export failed')
-    }
-
-    return response.blob()
+    return response as unknown as Blob
   },
 
   async chat(fileId: string, message: string, fileName?: string) {
-    const response = await fetch(`${API_URL}/api/chat`, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ 
-        file_id: fileId, 
-        message,
-        file_name: fileName 
-      }),
-    })
-    return handleResponse<ChatResponse>(response)
+    return axiosInstance.post<ChatResponse>('/api/chat', {
+      file_id: fileId,
+      message,
+      file_name: fileName
+    }) as unknown as Promise<ChatResponse>
   },
 
   async storeAnalysisContext(fileId: string, analysisType: string, results: unknown) {
@@ -86,28 +73,47 @@ export const api = {
     formData.append('analysis_type', analysisType)
     formData.append('results', JSON.stringify(results))
 
-    const response = await fetch(`${API_URL}/api/chat/context`, {
-      method: 'POST',
-      body: formData,
-    })
-    return handleResponse<{ status: string; message: string }>(response)
+    return axiosInstance.post<{ status: string; message: string }>('/api/chat/context', formData) as unknown as Promise<{ status: string; message: string }>
   },
 
   async getChatHistory(fileId: string) {
-    const response = await fetch(`${API_URL}/api/chat/history/${fileId}`)
-    return handleResponse<ChatHistoryResponse>(response)
+    return axiosInstance.get<ChatHistoryResponse>(`/api/chat/history/${fileId}`) as unknown as Promise<ChatHistoryResponse>
   },
 
   async transcribeAudio(audioBlob: Blob) {
     const formData = new FormData()
     formData.append('audio', audioBlob, 'audio.webm')
 
-    const response = await fetch(`${API_URL}/api/transcribe`, {
-      method: 'POST',
-      body: formData,
-    })
-    return handleResponse<{ text: string }>(response)
+    return axiosInstance.post<{ text: string }>('/api/transcribe', formData) as unknown as Promise<{ text: string }>
   },
+
+  // Auth Endpoints
+  async register(email: string, password: string) {
+    return axiosInstance.post<{ message: string, user_id: number }>('/api/auth/register', { email, password }) as unknown as Promise<{ message: string, user_id: number }>
+  },
+
+  async login(formData: FormData) {
+    // OAuth2PasswordRequestForm expects form data
+    return axiosInstance.post<{ access_token: string, token_type: string }>('/api/auth/token', formData) as unknown as Promise<{ access_token: string, token_type: string }>
+  },
+
+  async getMe() {
+    return axiosInstance.get<User>('/api/auth/me') as unknown as Promise<User>
+  },
+
+  admin: {
+    getUsers: () => axiosInstance.get<User[]>('/api/admin/users') as unknown as Promise<User[]>,
+    approveUser: (userId: number) => axiosInstance.patch<User>(`/api/admin/users/${userId}/approve`, {}) as unknown as Promise<User>,
+  }
+}
+
+// User Type
+export interface User {
+  id: number
+  email: string
+  is_active: boolean
+  is_approved: boolean
+  is_superuser: boolean
 }
 
 // Types

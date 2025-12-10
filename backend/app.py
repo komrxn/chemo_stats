@@ -21,6 +21,8 @@ from services.anova import AnovaAnalyzer
 from services.pca import PCAAnalyzer
 from services.export import generate_anova_excel
 from services.ai_assistant import ai_assistant
+from routers import auth, admin
+from database import init_db
 from utils.file_parser import parse_uploaded_file, preview_file
 from pydantic import BaseModel
 
@@ -40,6 +42,7 @@ logger = logging.getLogger(__name__)
 async def lifespan(app: FastAPI):
     """Startup and shutdown events"""
     logger.info("🚀 Starting ANOVA/PCA Analysis Backend")
+    init_db()  # Initialize Database Tables
     yield
     logger.info("🛑 Shutting down Analysis Backend")
 
@@ -49,6 +52,10 @@ app = FastAPI(
     version="1.0.0",
     lifespan=lifespan
 )
+
+# Include Routers
+app.include_router(auth.router, prefix="/api")
+app.include_router(admin.router, prefix="/api")
 
 # CORS - Configure based on environment
 FRONTEND_URL = os.getenv("FRONTEND_URL", "http://localhost:8080")

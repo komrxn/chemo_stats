@@ -9,9 +9,18 @@ packages = [{include = "services"}, {include = "utils"}, {include = "rag"}]
 [tool.poetry.dependencies]
 python = "^3.11"
 # Web Framework
+# Web Framework
 fastapi = "0.115.0"
 uvicorn = {extras = ["standard"], version = "0.32.0"}
 python-multipart = "0.0.12"
+email-validator = "^2.1.0.post1"
+
+# Database & Auth
+sqlmodel = "^0.0.16"
+psycopg2-binary = "^2.9.9"
+passlib = {extras = ["bcrypt"], version = "^1.7.4"}
+bcrypt = "4.0.1"
+python-jose = {extras = ["cryptography"], version = "^3.3.0"}
 
 # Data Processing
 numpy = "1.26.4"  # FAISS requires NumPy 1.x
