@@ -4,6 +4,14 @@
  */
 export const en = {
   // ═══════════════════════════════════════════════════════════════════════════
+  // Pre-Analysis
+  'pre.title': 'Data Exploration',
+  'pre.description': 'Preview distribution of {{count}} variables across {{samples}} samples',
+  'pre.variable': 'Select Variable',
+  'pre.grouping': 'Group By (Metadata)',
+  'pre.noGrouping': 'None (Distribution)',
+  'pre.stats': 'Statistics',
+
   // General
   // ═══════════════════════════════════════════════════════════════════════════
   'app.name': 'KKH Analysis',

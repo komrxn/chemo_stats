@@ -133,33 +133,80 @@ export function DataPreview({ preview }: DataPreviewProps) {
 
           {/* Double scroll container - both X and Y */}
           <div className="flex-1 overflow-auto rounded-lg border border-border min-h-0">
-            {preview.previewRows && preview.previewRows.length > 0 && (
-              <table className="data-table w-max min-w-full">
+            {/* Raw Excel-like View */}
+            {preview.rawPreview && preview.rawPreview.length > 0 ? (
+              <table className="data-table w-max min-w-full border-collapse">
                 <thead className="sticky top-0 z-10 bg-surface-overlay">
                   <tr>
-                    <th className="text-center w-12 sticky left-0 bg-surface-overlay z-20">#</th>
-                    {Object.keys(preview.previewRows[0]).map((key) => (
-                      <th key={key} className="whitespace-nowrap">{key}</th>
+                    {/* Corner cell */}
+                    <th className="text-center w-12 sticky left-0 bg-surface-overlay z-20 border-r border-b border-border">
+                      <div className="text-[10px] text-text-muted font-mono opacity-50">#</div>
+                    </th>
+                    {/* Column Headers (1, 2, 3...) */}
+                    {preview.rawPreview[0].map((_, index) => (
+                      <th key={index} className="text-center px-2 py-1 min-w-[60px] border-r border-b border-border bg-surface-raised">
+                        <div className="text-xs text-text-secondary font-mono">
+                          {index + 1}
+                        </div>
+                      </th>
                     ))}
                   </tr>
                 </thead>
                 <tbody>
-                  {preview.previewRows.map((row, i) => (
-                    <tr key={i}>
-                      <td className="text-center text-text-muted font-mono text-xs sticky left-0 bg-surface z-10">
-                        {i + 1}
+                  {preview.rawPreview.map((row, rowIndex) => (
+                    <tr key={rowIndex} className="border-b border-border/50">
+                      {/* Row Index (1, 2, 3...) */}
+                      <td className="text-center text-text-muted font-mono text-xs sticky left-0 bg-surface-raised z-10 border-r border-border w-12">
+                        {rowIndex + 1}
                       </td>
-                      {Object.entries(row).map(([key, value]) => (
-                        <td key={key} className="tabular-nums whitespace-nowrap">
-                          {typeof value === 'number' 
-                            ? (value as number).toFixed(4) 
-                            : String(value)}
+                      {/* Cells */}
+                      {row.map((cell, colIndex) => (
+                        <td key={colIndex} className="px-2 py-1 whitespace-nowrap border-r border-border/50 text-sm">
+                          {cell}
                         </td>
                       ))}
                     </tr>
                   ))}
                 </tbody>
               </table>
+            ) : (
+              /* Fallback to parsed preview if raw not available */
+              preview.previewRows && preview.previewRows.length > 0 && (
+                <table className="data-table w-max min-w-full">
+                  <thead className="sticky top-0 z-10 bg-surface-overlay">
+                    <tr>
+                      <th className="text-center w-12 sticky left-0 bg-surface-overlay z-20">
+                        <div className="text-[10px] text-text-muted font-mono mb-0.5 opacity-70">Idx</div>
+                        #
+                      </th>
+                      {Object.keys(preview.previewRows[0]).map((key, index) => (
+                        <th key={key} className="whitespace-nowrap px-4 py-2">
+                          <div className="text-[10px] text-text-muted font-mono mb-0.5 opacity-70">
+                            Col {index + 1}
+                          </div>
+                          {key}
+                        </th>
+                      ))}
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {preview.previewRows.map((row, i) => (
+                      <tr key={i}>
+                        <td className="text-center text-text-muted font-mono text-xs sticky left-0 bg-surface z-10">
+                          {i + 1}
+                        </td>
+                        {Object.entries(row).map(([key, value]) => (
+                          <td key={key} className="tabular-nums whitespace-nowrap">
+                            {typeof value === 'number'
+                              ? (value as number).toFixed(4)
+                              : String(value)}
+                          </td>
+                        ))}
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              )
             )}
           </div>
 

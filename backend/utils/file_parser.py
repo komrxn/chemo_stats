@@ -121,6 +121,20 @@ async def preview_file(file: UploadFile) -> dict:
                         row_dict[str(col)] = str(val)
                 preview_rows.append(row_dict)
             
+            # Prepare raw preview (like Excel view)
+            raw_preview_data = []
+            # Use df_raw which contains the file with header=None
+            for idx in range(min(100, len(df_raw))):
+                row_vals = []
+                for col in df_raw.columns:
+                    val = df_raw.iloc[idx][col]
+                    # Handle NaN
+                    if pd.isna(val):
+                        row_vals.append("")
+                    else:
+                        row_vals.append(str(val))
+                raw_preview_data.append(row_vals)
+
             return {
                 "trigger_found": True,
                 "trigger_column": df.columns[trigger_idx],
@@ -129,6 +143,7 @@ async def preview_file(file: UploadFile) -> dict:
                 "num_samples": len(df),
                 "num_variables": num_variables,
                 "preview_rows": preview_rows,
+                "raw_preview": raw_preview_data, # New field
                 "all_columns": [str(col) for col in df.columns]
             }
         else:

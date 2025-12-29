@@ -34,6 +34,7 @@ export interface FilePreview {
   numSamples: number
   numVariables: number
   previewRows?: Record<string, string>[]
+  rawPreview?: string[][]
 }
 
 export interface MetadataColumn {

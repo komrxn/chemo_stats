@@ -12,7 +12,7 @@ export function LoginPage() {
     const [error, setError] = useState<string | null>(null)
     const [isLoading, setIsLoading] = useState(false)
     const navigate = useNavigate()
-    const setAuth = useAuthStore((s) => s.setAuth)
+    const { setToken, setAuth, logout } = useAuthStore()
 
     const handleSubmit = async (e: React.FormEvent) => {
         e.preventDefault()
@@ -27,29 +27,21 @@ export function LoginPage() {
             // 1. Get Token
             const tokenData = await api.login(formData)
 
-            // Store token early to allow getMe to work if it needs it (though getMe usually takes token from store)
-            // Actually we need to setAuth with token first, then get user.
-            // But setAuth expects user object too.
-            // So we might need to manually set token in store or pass it to interceptor?
-            // Our interceptor reads from store. So we must set token in store.
-            // But we don't have user yet.
+            // 2. Set token in store (allows API interceptor to use it)
+            setToken(tokenData.access_token)
 
-            // Temporary solution: Create a partial update method in store or just set token with null user first?
-            // Or just manually call getMe with header.
-
-            // Better: Update store to allow partial updates or just fetch me using token
-            useAuthStore.setState({ token: tokenData.access_token })
-
-            // 2. Get User
+            // 3. Get User with authenticated request
             const user = await api.getMe()
+
+            // 4. Set complete auth state
             setAuth(tokenData.access_token, user)
 
             navigate('/')
         } catch (err: any) {
             console.error(err)
             setError(err.message || 'Login failed')
-            // If failed, clear token
-            useAuthStore.setState({ token: null })
+            // Clear auth state on error
+            logout()
         } finally {
             setIsLoading(false)
         }

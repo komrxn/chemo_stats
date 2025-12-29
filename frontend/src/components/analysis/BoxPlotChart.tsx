@@ -1,7 +1,7 @@
 import { useMemo, useState, useEffect, useRef, useCallback } from 'react'
 import { motion } from 'framer-motion'
 import Plot from 'react-plotly.js'
-import { Maximize2, Minimize2, MessageSquarePlus } from 'lucide-react'
+import { Maximize2, Minimize2, MessageSquarePlus, Download } from 'lucide-react'
 import type { BoxplotVariable } from '@/types'
 import { useTranslation } from '@/lib/i18n'
 import { formatPValue, cn } from '@/lib/utils'
@@ -11,8 +11,8 @@ import html2canvas from 'html2canvas'
 
 interface BoxPlotChartProps {
   data: BoxplotVariable
-  pValue?: number
-  fdr?: number
+  fdr?: number  // FDR-corrected p-value (Benjamini-Hochberg)
+  effectSize?: number  // Effect size (η²) as percentage
 }
 
 // Color palette matching our design
@@ -29,21 +29,45 @@ const MIN_HEIGHT = 280
 const MAX_HEIGHT = 800
 const DEFAULT_HEIGHT = 380
 
-export function BoxPlotChart({ data, pValue, fdr }: BoxPlotChartProps) {
+export function BoxPlotChart({ data, fdr, effectSize }: BoxPlotChartProps) {
   const { t } = useTranslation()
   const [chartHeight, setChartHeight] = useState(DEFAULT_HEIGHT)
   const [capturing, setCapturing] = useState(false)
   const containerRef = useRef<HTMLDivElement>(null)
   const plotRef = useRef<any>(null)
-  
+
   const setPendingAttachment = useAppStore((s) => s.setPendingAttachment)
   const toggleRightSidebar = useAppStore((s) => s.toggleRightSidebar)
   const rightSidebarOpen = useAppStore((s) => s.rightSidebarOpen)
-  
+
+  // Download PNG handler using Plotly's built-in method
+  const handleDownloadPNG = useCallback(() => {
+    if (!plotRef.current?.el) return
+
+    // Clean filename (remove potential invalid characters)
+    const cleanName = data.variableName.replace(/[^a-z0-9]/gi, '_').toLowerCase()
+    const filename = `${cleanName}_boxplot`
+
+    // Use Plotly's downloadImage for clean, high-quality export
+    const gd = plotRef.current.el
+
+    import('plotly.js-dist-min').then((Plotly) => {
+      Plotly.downloadImage(gd, {
+        format: 'png',
+        width: 1200,
+        height: 800,
+        filename: filename, // Plotly appends extension automatically
+        scale: 2  // 2x resolution for publication quality
+      } as any)
+    }).catch((error) => {
+      console.error('Failed to export boxplot:', error)
+    })
+  }, [data.variableName])
+
   // Add boxplot to chat
   const handleAddToChat = useCallback(async () => {
     if (!containerRef.current || capturing) return
-    
+
     setCapturing(true)
     try {
       const canvas = await html2canvas(containerRef.current, {
@@ -52,16 +76,16 @@ export function BoxPlotChart({ data, pValue, fdr }: BoxPlotChartProps) {
         logging: false,
         useCORS: true,
       })
-      
+
       const imageData = canvas.toDataURL('image/png')
-      
+
       setPendingAttachment({
         type: 'image',
         data: imageData,
         name: `${data.variableName}_boxplot.png`,
         variableName: data.variableName,
       })
-      
+
       // Open sidebar if closed
       if (!rightSidebarOpen) {
         toggleRightSidebar()
@@ -82,7 +106,7 @@ export function BoxPlotChart({ data, pValue, fdr }: BoxPlotChartProps) {
       if (e.ctrlKey || e.metaKey) {
         e.preventDefault()
         e.stopPropagation()
-        
+
         const delta = e.deltaY > 0 ? -30 : 30
         setChartHeight((prev) => {
           const newHeight = Math.max(MIN_HEIGHT, Math.min(MAX_HEIGHT, prev + delta))
@@ -93,7 +117,7 @@ export function BoxPlotChart({ data, pValue, fdr }: BoxPlotChartProps) {
 
     // Use passive: false to allow preventDefault
     container.addEventListener('wheel', handleWheel, { passive: false })
-    
+
     return () => {
       container.removeEventListener('wheel', handleWheel)
     }
@@ -273,47 +297,70 @@ export function BoxPlotChart({ data, pValue, fdr }: BoxPlotChartProps) {
           </p>
         </div>
 
-        {/* Statistics badges and resize controls */}
+        {/* Statistics badges and action buttons */}
         <div className="flex items-center gap-2">
-          {pValue !== undefined && (
+          {/* Effect Size Badge - Shows biological/practical significance */}
+          {effectSize !== undefined && (
             <span
               className={cn(
                 'px-3 py-1.5 rounded-lg text-xs font-mono font-medium border',
-                pValue < 0.05
-                  ? 'bg-accent/15 text-accent border-accent/30'
-                  : 'bg-surface-raised text-text-secondary border-border'
+                effectSize > 14  // Large effect (η² > 0.14 = 14%)
+                  ? 'bg-violet-500/15 text-violet-400 border-violet-500/30'
+                  : effectSize > 6  // Medium effect
+                    ? 'bg-blue-500/15 text-blue-400 border-blue-500/30'
+                    : 'bg-surface-raised text-text-secondary border-border'
               )}
+              title="Effect size (η² as %) - measures the proportion of variance explained"
             >
-              <span className="text-text-muted mr-1">p =</span>
-              {formatPValue(pValue)}
+              <span className="text-text-muted mr-1">η² =</span>
+              {effectSize.toFixed(1)}%
             </span>
           )}
+
+          {/* FDR-Corrected P-value Badge - Shows statistical significance after multiple testing correction */}
           {fdr !== undefined && (
             <span
               className={cn(
                 'px-3 py-1.5 rounded-lg text-xs font-mono font-medium border',
                 fdr < 0.05
                   ? 'bg-success/15 text-success border-success/30'
-                  : 'bg-surface-raised text-text-secondary border-border'
+                  : fdr < 0.1
+                    ? 'bg-warning/15 text-warning border-warning/30'
+                    : 'bg-surface-raised text-text-secondary border-border'
               )}
+              title="FDR-corrected p-value (Benjamini-Hochberg)"
             >
-              <span className="text-text-muted mr-1">FDR =</span>
+              <span className="text-text-muted mr-1">FDR corrected p-value =</span>
               {formatPValue(fdr)}
             </span>
           )}
-          
-          {/* Add to chat button */}
-          <Button
-            variant="ghost"
-            size="sm"
-            onClick={handleAddToChat}
-            disabled={capturing}
-            className="ml-2 text-accent hover:bg-accent/10"
-            title={t('boxplot.addToChat')}
-          >
-            <MessageSquarePlus className="h-4 w-4" />
-          </Button>
-          
+
+          {/* Action buttons group */}
+          <div className="flex items-center gap-1 ml-2 border-l border-border pl-2">
+            {/* Download PNG button - Clean export for publications */}
+            <Button
+              variant="ghost"
+              size="sm"
+              onClick={handleDownloadPNG}
+              className="text-text-secondary hover:bg-surface-overlay"
+              title="Download high-quality PNG (transparent background, 2x resolution)"
+            >
+              <Download className="h-4 w-4" />
+            </Button>
+
+            {/* Add to chat button */}
+            <Button
+              variant="ghost"
+              size="sm"
+              onClick={handleAddToChat}
+              disabled={capturing}
+              className="text-accent hover:bg-accent/10"
+              title={t('boxplot.addToChat')}
+            >
+              <MessageSquarePlus className="h-4 w-4" />
+            </Button>
+          </div>
+
           {/* Resize controls */}
           <div className="flex items-center gap-1 ml-1 border-l border-border pl-2">
             <Button

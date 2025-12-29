@@ -1,4 +1,4 @@
-import axios from 'axios'
+import axios, { AxiosResponse } from 'axios'
 import { useAuthStore } from '../store/authStore'
 
 const API_URL = import.meta.env.VITE_API_URL || ''
@@ -15,8 +15,9 @@ axiosInstance.interceptors.request.use((config) => {
   return config
 })
 
+// Fix the response interceptor to properly type the data extraction
 axiosInstance.interceptors.response.use(
-  (response) => response.data,
+  <T = any>(response: AxiosResponse<T>) => response.data as T,
   (error) => {
     const message = error.response?.data?.detail || 'Request failed'
     return Promise.reject(new Error(message))
@@ -24,86 +25,82 @@ axiosInstance.interceptors.response.use(
 )
 
 export const api = {
-  async previewFile(file: File) {
+  async previewFile(file: File): Promise<PreviewResponse> {
     const formData = new FormData()
     formData.append('file', file)
-
-    return axiosInstance.post<PreviewResponse>('/api/preview', formData) as unknown as Promise<PreviewResponse>
+    return axiosInstance.post('/api/preview', formData)
   },
 
-  async runAnova(file: File, params: AnovaParams) {
+  async runAnova(file: File, params: AnovaParams): Promise<AnovaResponse> {
     const formData = new FormData()
     formData.append('file', file)
     formData.append('class_column', params.classColumn)
     formData.append('fdr_threshold', params.fdrThreshold.toString())
     formData.append('design_label', params.designLabel)
     formData.append('plot_option', params.plotOption.toString())
-
-    return axiosInstance.post<AnovaResponse>('/api/analyze/anova', formData) as unknown as Promise<AnovaResponse>
+    return axiosInstance.post('/api/analyze/anova', formData)
   },
 
-  async runPca(file: File, params: PcaParams) {
+  async runPca(file: File, params: PcaParams): Promise<PcaResponse> {
     const formData = new FormData()
     formData.append('file', file)
     formData.append('num_pcs', params.numPcs.toString())
     formData.append('scaling_method', params.scalingMethod)
     formData.append('design_label', params.designLabel)
-
-    return axiosInstance.post<PcaResponse>('/api/analyze/pca', formData) as unknown as Promise<PcaResponse>
+    return axiosInstance.post('/api/analyze/pca', formData)
   },
 
-  async exportAnova(data: AnovaResponse) {
+  async exportAnova(data: AnovaResponse): Promise<Blob> {
+    // Note: blob responseType requires type cast since axios returns different type
     const response = await axiosInstance.post('/api/export/anova', data, {
       responseType: 'blob'
     })
     return response as unknown as Blob
   },
 
-  async chat(fileId: string, message: string, fileName?: string) {
-    return axiosInstance.post<ChatResponse>('/api/chat', {
+  async chat(fileId: string, message: string, fileName?: string): Promise<ChatResponse> {
+    return axiosInstance.post('/api/chat', {
       file_id: fileId,
       message,
       file_name: fileName
-    }) as unknown as Promise<ChatResponse>
+    })
   },
 
-  async storeAnalysisContext(fileId: string, analysisType: string, results: unknown) {
+  async storeAnalysisContext(fileId: string, analysisType: string, results: unknown): Promise<{ status: string; message: string }> {
     const formData = new FormData()
     formData.append('file_id', fileId)
     formData.append('analysis_type', analysisType)
     formData.append('results', JSON.stringify(results))
-
-    return axiosInstance.post<{ status: string; message: string }>('/api/chat/context', formData) as unknown as Promise<{ status: string; message: string }>
+    return axiosInstance.post('/api/chat/context', formData)
   },
 
-  async getChatHistory(fileId: string) {
-    return axiosInstance.get<ChatHistoryResponse>(`/api/chat/history/${fileId}`) as unknown as Promise<ChatHistoryResponse>
+  async getChatHistory(fileId: string): Promise<ChatHistoryResponse> {
+    return axiosInstance.get(`/api/chat/history/${fileId}`)
   },
 
-  async transcribeAudio(audioBlob: Blob) {
+  async transcribeAudio(audioBlob: Blob): Promise<{ text: string }> {
     const formData = new FormData()
     formData.append('audio', audioBlob, 'audio.webm')
-
-    return axiosInstance.post<{ text: string }>('/api/transcribe', formData) as unknown as Promise<{ text: string }>
+    return axiosInstance.post('/api/transcribe', formData)
   },
 
   // Auth Endpoints
-  async register(email: string, password: string) {
-    return axiosInstance.post<{ message: string, user_id: number }>('/api/auth/register', { email, password }) as unknown as Promise<{ message: string, user_id: number }>
+  async register(email: string, password: string): Promise<{ message: string, user_id: number }> {
+    return axiosInstance.post('/api/auth/register', { email, password })
   },
 
-  async login(formData: FormData) {
+  async login(formData: FormData): Promise<{ access_token: string, token_type: string }> {
     // OAuth2PasswordRequestForm expects form data
-    return axiosInstance.post<{ access_token: string, token_type: string }>('/api/auth/token', formData) as unknown as Promise<{ access_token: string, token_type: string }>
+    return axiosInstance.post('/api/auth/token', formData)
   },
 
-  async getMe() {
-    return axiosInstance.get<User>('/api/auth/me') as unknown as Promise<User>
+  async getMe(): Promise<User> {
+    return axiosInstance.get('/api/auth/me')
   },
 
   admin: {
-    getUsers: () => axiosInstance.get<User[]>('/api/admin/users') as unknown as Promise<User[]>,
-    approveUser: (userId: number) => axiosInstance.patch<User>(`/api/admin/users/${userId}/approve`, {}) as unknown as Promise<User>,
+    getUsers: (): Promise<User[]> => axiosInstance.get('/api/admin/users'),
+    approveUser: (userId: number): Promise<User> => axiosInstance.patch(`/api/admin/users/${userId}/approve`, {}),
   }
 }
 
@@ -125,6 +122,7 @@ export interface PreviewResponse {
   num_samples: number
   num_variables: number
   preview_rows?: Record<string, string>[]
+  raw_preview?: string[][]
   all_columns?: string[]
 }
 

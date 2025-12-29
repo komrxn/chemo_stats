@@ -11,6 +11,7 @@ RUN apt-get update && apt-get install -y \
     && rm -rf /var/lib/apt/lists/*
 
 # Install Poetry
+ENV POETRY_HTTP_TIMEOUT=120
 RUN pip install poetry
 
 # Copy project definition files

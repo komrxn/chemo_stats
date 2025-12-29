@@ -24,7 +24,7 @@ from services.ai_assistant import ai_assistant
 from routers import auth, admin
 from database import init_db
 from utils.file_parser import parse_uploaded_file, preview_file
-from pydantic import BaseModel
+from pydantic import BaseModel, Field
 
 # Configure logging
 logging.basicConfig(
@@ -258,9 +258,28 @@ async def export_anova(
 # ═══════════════════════════════════════════════════════════════════════════
 
 class ChatRequest(BaseModel):
-    file_id: str
-    message: str
-    file_name: str | None = None
+    file_id: str = Field(
+        min_length=1,
+        max_length=100,
+        description="Unique file identifier"
+    )
+    message: str = Field(
+        min_length=1,
+        max_length=5000,
+        description="User message to AI assistant"
+    )
+    file_name: str | None = Field(
+        default=None,
+        max_length=255,
+        description="Optional filename for context"
+    )
+    
+    model_config = {"validate_assignment": True}
+    
+    @property
+    def is_message_empty(self) -> bool:
+        """Check if message is empty or only whitespace"""
+        return not self.message or self.message.strip() == ""
 
 
 class ChatResponse(BaseModel):
@@ -280,6 +299,13 @@ async def chat_with_assistant(request: ChatRequest) -> ChatResponse:
         AI response
     """
     try:
+        # Validate message is not just whitespace
+        if request.is_message_empty:
+            raise HTTPException(
+                status_code=400,
+                detail="Message cannot be empty or only whitespace"
+            )
+        
         logger.info(f"💬 Chat request for file: {request.file_id}")
         
         response = await ai_assistant.chat(

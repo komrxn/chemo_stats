@@ -82,14 +82,16 @@ function AnovaResultsView({ results }: { results: AnovaResults }) {
             "grid gap-6",
             bothClosed ? "grid-cols-1 xl:grid-cols-2" : "grid-cols-1"
           )}>
-            {Object.entries(boxplotData).map(([key, data], idx) => {
-              const result = results.results[idx]
+            {Object.entries(boxplotData).map(([key, boxplotVar]) => {
+              // Find matching result by variable name
+              const result = results.results.find(r => r.variable === boxplotVar.variableName)
+
               return (
                 <BoxPlotChart
                   key={key}
-                  data={data}
-                  pValue={result?.pValue}
+                  data={boxplotVar}
                   fdr={result?.fdr}
+                  effectSize={result?.effectSize}
                 />
               )
             })}

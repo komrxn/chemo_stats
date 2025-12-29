@@ -21,6 +21,7 @@ import { Button } from '@/components/ui/Button'
 import { LanguageToggle } from '@/components/ui/LanguageSwitcher'
 import { api } from '@/lib/api'
 import { DataPreview } from '@/components/analysis/DataPreview'
+import { PreAnalysisVisualizer } from '@/components/analysis/PreAnalysisVisualizer'
 import { AnalysisResults } from '@/components/analysis/AnalysisResults'
 import { AnalysisSettingsDialog } from '@/components/analysis/AnalysisSettingsDialog'
 import type { FilePreview, AnovaResults } from '@/types'
@@ -33,7 +34,7 @@ export function MainContent() {
   const toggleRightSidebar = useAppStore((s) => s.toggleRightSidebar)
   const activeProject = useActiveProject()
   const activeTable = useActiveTable()
-  
+
   const createProject = useAppStore((s) => s.createProject)
   const createTable = useAppStore((s) => s.createTable)
   const updateTablePreview = useAppStore((s) => s.updateTablePreview)
@@ -90,7 +91,7 @@ export function MainContent() {
 
         // Preview file
         const preview = await api.previewFile(file)
-        
+
         const filePreview: FilePreview = {
           triggerFound: preview.trigger_found,
           triggerColumn: preview.trigger_column,
@@ -103,6 +104,7 @@ export function MainContent() {
           numSamples: preview.num_samples,
           numVariables: preview.num_variables,
           previewRows: preview.preview_rows,
+          rawPreview: preview.raw_preview,
         }
 
         updateTablePreview(projectId, tableId, filePreview)
@@ -242,6 +244,11 @@ export function MainContent() {
                 {/* Data Preview */}
                 {activeTable.preview && (
                   <DataPreview preview={activeTable.preview} />
+                )}
+
+                {/* Pre-Analysis Visualization (Phase 3) */}
+                {activeTable.preview && (
+                  <PreAnalysisVisualizer preview={activeTable.preview} />
                 )}
 
                 {/* Analysis Results */}

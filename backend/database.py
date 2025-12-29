@@ -17,7 +17,9 @@ if not DATABASE_URL:
     # DATABASE_URL = "postgresql://postgres:postgres@localhost:5432/kkh_analysis"
     pass
 
-engine = create_engine(DATABASE_URL, echo=True)
+# Use echo only in development to prevent logging sensitive data in production
+DEBUG = os.getenv("DEBUG", "false").lower() == "true"
+engine = create_engine(DATABASE_URL, echo=DEBUG)
 
 def init_db():
     SQLModel.metadata.create_all(engine)
