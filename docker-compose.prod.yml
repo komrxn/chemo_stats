@@ -60,7 +60,7 @@ services:
       - POSTGRES_PASSWORD=postgres
       - POSTGRES_DB=kkh_analysis
     volumes:
-      - postgres_data:/var/lib/postgresql/data
+      - kkh_prod_db_data:/var/lib/postgresql/data
     healthcheck:
       test: [ "CMD-SHELL", "pg_isready -U postgres" ]
       interval: 10s
@@ -86,7 +86,7 @@ services:
 
 volumes:
   redis_data:
-  postgres_data:
+  kkh_prod_db_data:
 
 
 networks:
