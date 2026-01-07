@@ -92,6 +92,7 @@ function AnovaResultsView({ results }: { results: AnovaResults }) {
                   data={boxplotVar}
                   fdr={result?.fdr}
                   effectSize={result?.effectSize}
+                  plotType={results.plotType || 'box'}
                 />
               )
             })}

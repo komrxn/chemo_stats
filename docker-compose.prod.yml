@@ -1,0 +1,93 @@
+services:
+  # Redis for AI context memory
+  redis:
+    image: redis:7-alpine
+    container_name: kkh-redis
+    restart: always
+    volumes:
+      - redis_data:/data
+    healthcheck:
+      test: [ "CMD", "redis-cli", "ping" ]
+      interval: 10s
+      timeout: 5s
+      retries: 3
+    networks:
+      - kkh-network
+
+  # Backend API (FastAPI)
+  backend:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile
+    container_name: kkh-backend
+    restart: always
+    env_file:
+      - .env
+    # Only expose to localhost to allow direct access if needed (debugging)
+    # but mainly accessed via internal docker network
+    ports:
+      - "127.0.0.1:8001:8000"
+    environment:
+      - PYTHONUNBUFFERED=1
+      - REDIS_URL=redis://redis:6379
+      - DATABASE_URL=postgresql://postgres:postgres@db:5432/kkh_analysis
+      - OPENAI_API_KEY=${OPENAI_API_KEY}
+    volumes:
+      - ./logs:/app/logs
+    depends_on:
+      redis:
+        condition: service_healthy
+      db:
+        condition: service_healthy
+    healthcheck:
+      test: [ "CMD", "curl", "-f", "http://localhost:8000/health" ]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+    networks:
+      - kkh-network
+
+  # Database (PostgreSQL)
+  db:
+    image: postgres:15-alpine
+    container_name: kkh-db
+    restart: always
+    # Map to non-standard port to avoid conflict with host postgres
+    ports:
+      - "127.0.0.1:5433:5432"
+    environment:
+      - POSTGRES_USER=postgres
+      - POSTGRES_PASSWORD=postgres
+      - POSTGRES_DB=kkh_analysis
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test: [ "CMD-SHELL", "pg_isready -U postgres" ]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    networks:
+      - kkh-network
+
+  # Frontend (React + Nginx)
+  frontend:
+    build:
+      context: ./frontend
+      dockerfile: Dockerfile
+    container_name: kkh-frontend
+    restart: always
+    # Expose on port 4000 (Host Nginx will proxy here)
+    ports:
+      - "127.0.0.1:4000:80"
+    depends_on:
+      - backend
+    networks:
+      - kkh-network
+
+volumes:
+  redis_data:
+  postgres_data:
+
+networks:
+  kkh-network:
+    driver: bridge

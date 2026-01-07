@@ -53,10 +53,18 @@ export function PreAnalysisVisualizer({ preview }: PreAnalysisVisualizerProps) {
 
         if (vizMode === 'distribution') {
             if (!selectedVar) return null
-            const data = preview.previewRows.map(row => ({
-                val: parseFloat(row[selectedVar]),
-                group: selectedGroup ? row[selectedGroup] : 'All'
-            })).filter(d => !isNaN(d.val))
+
+            // Find mapping for selected group
+            const groupMeta = preview.metadataColumns.find(c => c.name === selectedGroup)
+            const mapping = groupMeta?.mapping
+
+            const data = preview.previewRows.map(row => {
+                const rawGroup = selectedGroup ? row[selectedGroup] : 'All'
+                return {
+                    val: parseFloat(row[selectedVar]),
+                    group: mapping && mapping[rawGroup] ? mapping[rawGroup] : rawGroup
+                }
+            }).filter(d => !isNaN(d.val))
 
             const groups = [...new Set(data.map(d => d.group))].sort()
 
@@ -78,13 +86,23 @@ export function PreAnalysisVisualizer({ preview }: PreAnalysisVisualizerProps) {
             const samplesToUse = preview.previewRows.slice(0, 500)
 
             // Determine unique groups for coloring
+            const groupMeta = preview.metadataColumns.find(c => c.name === selectedGroup)
+            const mapping = groupMeta?.mapping
+
+            // Map samples to display groups
+            const mappedSamples = samplesToUse.map(s => {
+                const rawGroup = selectedGroup ? s[selectedGroup] : 'All'
+                const displayGroup = mapping && mapping[rawGroup] ? mapping[rawGroup] : rawGroup
+                return { ...s, _displayGroup: displayGroup }
+            })
+
             const groups = selectedGroup
-                ? [...new Set(samplesToUse.map(r => r[selectedGroup]))].sort()
+                ? [...new Set(mappedSamples.map(s => s._displayGroup))].sort()
                 : ['All']
 
             return {
                 type: 'profiles',
-                samples: samplesToUse,
+                samples: mappedSamples,
                 groups,
                 vars: preview.variableNames
             }
@@ -119,8 +137,8 @@ export function PreAnalysisVisualizer({ preview }: PreAnalysisVisualizerProps) {
             }
         } else {
             // Profiles Mode
-            return plotData.samples.map((sample, i) => {
-                const groupName = selectedGroup ? sample[selectedGroup] : 'All'
+            return plotData.samples.map((sample: any, i) => {
+                const groupName = (sample as any)._displayGroup || (selectedGroup ? sample[selectedGroup] : 'All')
                 const sampleId = `Sample ${i + 1}`
 
                 // Explicitly cast to any to avoid complex union type errors with react-plotly.js

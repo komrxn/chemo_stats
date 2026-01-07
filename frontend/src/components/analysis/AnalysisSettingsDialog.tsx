@@ -59,6 +59,7 @@ export function AnalysisSettingsDialog({
   const [fdrThreshold, setFdrThreshold] = useState('0.05')
   const [designLabel, setDesignLabel] = useState('Treatment')
   const [plotOption, setPlotOption] = useState('3')
+  const [plotType, setPlotType] = useState<'box' | 'violin'>('box') // New state
   const [numPcs, setNumPcs] = useState('3')
   const [scalingMethod, setScalingMethod] = useState<'auto' | 'mean' | 'pareto'>('auto')
   const [running, setRunning] = useState(false)
@@ -74,7 +75,7 @@ export function AnalysisSettingsDialog({
     if (!activeProject || !activeTable?.file) return
 
     setRunning(true)
-    
+
     updateTableAnalysis(activeProject.id, activeTable.id, {
       status: 'running',
       method,
@@ -119,6 +120,7 @@ export function AnalysisSettingsDialog({
             benjaminiThreshold: response.overview_data.benjamini_threshold,
             nominalThreshold: response.overview_data.nominal_threshold,
           },
+          plotType, // Pass selected plot type
         }
 
         updateTableAnalysis(activeProject.id, activeTable.id, {
@@ -203,7 +205,7 @@ export function AnalysisSettingsDialog({
           {/* Method Selection */}
           <div className="space-y-3">
             <FieldLabel icon={Sparkles} label={t('analysis.method')} />
-            
+
             <div className="grid grid-cols-2 gap-3">
               <MethodCard
                 selected={method === 'anova'}
@@ -258,7 +260,7 @@ export function AnalysisSettingsDialog({
                       ))}
                     </SelectContent>
                   </Select>
-                  
+
                   {/* Selected column preview */}
                   {selectedColumnInfo && (
                     <motion.div
@@ -300,7 +302,7 @@ export function AnalysisSettingsDialog({
                       className="h-12 font-mono"
                     />
                   </div>
-                  
+
                   <div className="space-y-2">
                     <FieldLabel icon={FolderOpen} label={t('analysis.designLabel')} />
                     <Input
@@ -352,6 +354,39 @@ export function AnalysisSettingsDialog({
                       </SelectItem>
                     </SelectContent>
                   </Select>
+                </div>
+
+                {/* Plot Type Selection */}
+                <div className="space-y-2">
+                  <FieldLabel icon={BarChart3} label={t('analysis.plotType')} />
+                  <div className="grid grid-cols-2 gap-3">
+                    <button
+                      type="button"
+                      onClick={() => setPlotType('box')}
+                      className={cn(
+                        'p-3 rounded-xl border-2 text-left transition-all',
+                        plotType === 'box'
+                          ? 'border-accent bg-accent/10 text-accent'
+                          : 'border-border bg-surface-raised/50 text-text-secondary hover:border-accent/30'
+                      )}
+                    >
+                      <div className="font-semibold mb-1">Boxplot</div>
+                      <div className="text-xs text-text-muted">Standard quartiles</div>
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => setPlotType('violin')}
+                      className={cn(
+                        'p-3 rounded-xl border-2 text-left transition-all',
+                        plotType === 'violin'
+                          ? 'border-accent bg-accent/10 text-accent'
+                          : 'border-border bg-surface-raised/50 text-text-secondary hover:border-accent/30'
+                      )}
+                    >
+                      <div className="font-semibold mb-1">Violin</div>
+                      <div className="text-xs text-text-muted">Distribution density</div>
+                    </button>
+                  </div>
                 </div>
               </motion.div>
             ) : (

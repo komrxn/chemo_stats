@@ -63,6 +63,7 @@ export const ru = {
   'analysis.fdrThreshold': 'Порог FDR',
   'analysis.fdrHelp': 'False Discovery Rate — контролирует долю ложноположительных результатов. Стандарт: 0.05',
   'analysis.designLabel': 'Метка дизайна',
+  'analysis.plotType': 'Тип графика',
   'analysis.visualization': 'Визуализация результатов',
   'analysis.noPlots': 'Без графиков',
   'analysis.nominal': 'Номинальные (p < 0.05)',

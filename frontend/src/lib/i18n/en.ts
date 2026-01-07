@@ -71,6 +71,7 @@ export const en = {
   'analysis.fdrThreshold': 'FDR Threshold',
   'analysis.fdrHelp': 'False Discovery Rate — controls the proportion of false positives. Standard: 0.05',
   'analysis.designLabel': 'Design Label',
+  'analysis.plotType': 'Plot Type',
   'analysis.visualization': 'Results Visualization',
   'analysis.noPlots': 'No plots',
   'analysis.nominal': 'Nominal (p < 0.05)',

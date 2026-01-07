@@ -41,6 +41,7 @@ export interface MetadataColumn {
   name: string
   uniqueCount: number
   sampleValues: (string | number)[]
+  mapping?: Record<string, string> // Value -> Label mapping
 }
 
 // Analysis
@@ -75,6 +76,7 @@ export interface AnovaResults {
   }
   boxplotData: Record<string, BoxplotVariable>
   overviewData: OverviewData
+  plotType?: 'box' | 'violin'
 }
 
 export interface AnovaRow {

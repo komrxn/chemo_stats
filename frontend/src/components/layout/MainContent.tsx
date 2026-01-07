@@ -237,7 +237,7 @@ export function MainContent() {
                     disabled={!activeTable.preview}
                   >
                     <Settings className="h-4 w-4" />
-                    {t('header.configurations')}
+                    {t('analysis.settings')}
                   </Button>
                 </div>
 

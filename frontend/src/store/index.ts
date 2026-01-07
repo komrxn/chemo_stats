@@ -36,6 +36,14 @@ interface AppState {
   chatLoading: boolean
   pendingAttachment: ChatAttachment | null // for boxplot -> chat
 
+  // Plot Customization
+  visualizationSettings: {
+    yAxisLabel: string
+    xAxisLabel: string
+    showLegend: boolean
+  }
+  setVisualizationSettings: (settings: Partial<{ yAxisLabel: string, xAxisLabel: string, showLegend: boolean }>) => void
+
   // Project Actions
   createProject: (name: string) => string
   deleteProject: (id: string) => void
@@ -62,7 +70,7 @@ interface AppState {
   addChatMessage: (message: Omit<ChatMessage, 'id' | 'timestamp'>) => void
   setChatLoading: (loading: boolean) => void
   clearChat: () => void
-  
+
   // Attachment from boxplot
   setPendingAttachment: (attachment: ChatAttachment | null) => void
 }
@@ -84,7 +92,7 @@ const updateTableInProject = (
       tables: project.tables.map((t) => (t.id === tableId ? updater(t) : t)),
     }
   }
-  
+
   // Table in folder - recursively search
   const updateFolders = (folders: Folder[]): Folder[] =>
     folders.map((folder) => {
@@ -96,7 +104,7 @@ const updateTableInProject = (
       }
       return { ...folder, folders: updateFolders(folder.folders) }
     })
-  
+
   return { ...project, folders: updateFolders(project.folders) }
 }
 
@@ -109,7 +117,7 @@ const deleteTableFromProject = (
   if (!folderId) {
     return { ...project, tables: project.tables.filter((t) => t.id !== tableId) }
   }
-  
+
   const updateFolders = (folders: Folder[]): Folder[] =>
     folders.map((folder) => {
       if (folder.id === folderId) {
@@ -117,7 +125,7 @@ const deleteTableFromProject = (
       }
       return { ...folder, folders: updateFolders(folder.folders) }
     })
-  
+
   return { ...project, folders: updateFolders(project.folders) }
 }
 
@@ -130,7 +138,7 @@ const addTableToProject = (
   if (!folderId) {
     return { ...project, tables: [...project.tables, table] }
   }
-  
+
   const updateFolders = (folders: Folder[]): Folder[] =>
     folders.map((folder) => {
       if (folder.id === folderId) {
@@ -138,7 +146,7 @@ const addTableToProject = (
       }
       return { ...folder, folders: updateFolders(folder.folders) }
     })
-  
+
   return { ...project, folders: updateFolders(project.folders) }
 }
 
@@ -154,6 +162,18 @@ export const useAppStore = create<AppState>((set) => ({
   chatMessages: [],
   chatLoading: false,
   pendingAttachment: null,
+
+  visualizationSettings: {
+    yAxisLabel: 'Value',
+    xAxisLabel: 'Groups',
+    showLegend: false
+  },
+
+  setVisualizationSettings: (settings) => {
+    set((state) => ({
+      visualizationSettings: { ...state.visualizationSettings, ...settings }
+    }))
+  },
 
   // Project actions
   createProject: (name) => {
@@ -204,16 +224,16 @@ export const useAppStore = create<AppState>((set) => ({
       folders: [],
       createdAt: new Date(),
     }
-    
+
     set((state) => ({
       projects: state.projects.map((p) => {
         if (p.id !== projectId) return p
-        
+
         if (!parentFolderId) {
           // Add to root
           return { ...p, folders: [...p.folders, folder] }
         }
-        
+
         // Add to parent folder
         const addToFolder = (folders: Folder[]): Folder[] =>
           folders.map((f) => {
@@ -222,7 +242,7 @@ export const useAppStore = create<AppState>((set) => ({
             }
             return { ...f, folders: addToFolder(f.folders) }
           })
-        
+
         return { ...p, folders: addToFolder(p.folders) }
       }),
     }))
@@ -233,13 +253,13 @@ export const useAppStore = create<AppState>((set) => ({
     set((state) => ({
       projects: state.projects.map((p) => {
         if (p.id !== projectId) return p
-        
+
         const removeFolder = (folders: Folder[]): Folder[] =>
           folders.filter((f) => f.id !== folderId).map((f) => ({
             ...f,
             folders: removeFolder(f.folders),
           }))
-        
+
         return { ...p, folders: removeFolder(p.folders) }
       }),
       activeFolderId: null,
@@ -250,7 +270,7 @@ export const useAppStore = create<AppState>((set) => ({
     set((state) => ({
       projects: state.projects.map((p) => {
         if (p.id !== projectId) return p
-        
+
         const updateFolders = (folders: Folder[]): Folder[] =>
           folders.map((f) => {
             if (f.id === folderId) {
@@ -258,7 +278,7 @@ export const useAppStore = create<AppState>((set) => ({
             }
             return { ...f, folders: updateFolders(f.folders) }
           })
-        
+
         return { ...p, folders: updateFolders(p.folders) }
       }),
     }))
@@ -388,13 +408,13 @@ const findTableInFolders = (folders: Folder[], tableId: string): Table | null =>
 export const useActiveTable = () => {
   const project = useActiveProject()
   const activeTableId = useAppStore((s) => s.activeTableId)
-  
+
   if (!project || !activeTableId) return null
-  
+
   // Check root tables
   const rootTable = project.tables.find((t) => t.id === activeTableId)
   if (rootTable) return rootTable
-  
+
   // Check folders
   return findTableInFolders(project.folders, activeTableId)
 }
@@ -402,7 +422,7 @@ export const useActiveTable = () => {
 export const useAnalysisContext = () => {
   const table = useActiveTable()
   if (!table?.analysis?.results) return null
-  
+
   return {
     type: table.analysis.method,
     results: table.analysis.results,

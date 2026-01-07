@@ -275,35 +275,67 @@ def extract_metadata_columns(df: pd.DataFrame, trigger_idx: int) -> list[dict]:
     """
     metadata_cols = []
     
+    # Regex for "Name Val=Label;Val=Label" pattern
+    # Matches: "Gender 1=Male; 0=Female" or "Season 1=Spring; 2=Summer"
+    import re
+    mapping_pattern = re.compile(r"(?P<name>.+?)\s+(?P<mapping>(\d+=.+?(;|$))+)")
+    
     for idx in range(trigger_idx):
-        col_name = df.columns[idx]
+        col_name_raw = str(df.columns[idx]).strip()
         col_data = df.iloc[:, idx]
+        
+        # Default values
+        clean_name = col_name_raw
+        mapping = None
+        
+        # Check for mapping in header
+        match = mapping_pattern.match(col_name_raw)
+        if match:
+            clean_name = match.group("name").strip()
+            mapping_str = match.group("mapping")
+            
+            # Parse mapping string: "1=Male; 0=Female" -> {1: "Male", 0: "Female"}
+            mapping = {}
+            pairs = [p.strip() for p in mapping_str.split(';') if p.strip()]
+            for pair in pairs:
+                if '=' in pair:
+                    k, v = pair.split('=', 1)
+                    try:
+                        # Try integer key first
+                        key = int(k.strip())
+                        mapping[key] = v.strip()
+                        # Also support string key just in case
+                        mapping[str(key)] = v.strip()
+                    except ValueError:
+                        mapping[k.strip()] = v.strip()
+            
+            logger.info(f"✅ Found mapping for '{clean_name}': {mapping}")
         
         # Get unique values
         unique_vals = col_data.dropna().unique()
         
         # Skip if too many unique values (likely ID column)
         if len(unique_vals) > 50:
-            logger.info(f"Skipping '{col_name}' - too many unique values ({len(unique_vals)})")
+            logger.info(f"Skipping '{col_name_raw}' - too many unique values ({len(unique_vals)})")
             continue
         
-        # Sort sample values for better display (handle mixed types)
+        # Sort sample values
         try:
             sample_values = sorted(unique_vals.tolist()[:10])
         except TypeError:
-            # Mixed types - convert to strings for sorting
             sample_values = sorted([str(x) for x in unique_vals.tolist()[:10]])
         except Exception:
-            # Any other error - just use unsorted
             sample_values = unique_vals.tolist()[:10]
         
         metadata_cols.append({
-            "name": str(col_name),
+            "name": clean_name,
+            "original_name": col_name_raw, # Keep reference
             "unique_count": len(unique_vals),
-            "sample_values": sample_values
+            "sample_values": sample_values,
+            "mapping": mapping # Include the parsed mapping
         })
         
-        logger.info(f"Metadata column: '{col_name}' ({len(unique_vals)} unique values)")
+        logger.info(f"Metadata column: '{clean_name}' ({len(unique_vals)} unique values)")
     
     return metadata_cols
 
