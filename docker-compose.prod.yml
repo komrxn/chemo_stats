@@ -26,7 +26,7 @@ services:
     # Only expose to localhost to allow direct access if needed (debugging)
     # but mainly accessed via internal docker network
     ports:
-      - "127.0.0.1:8001:8000"
+      - "127.0.0.1:8000:8000"
     environment:
       - PYTHONUNBUFFERED=1
       - REDIS_URL=redis://redis:6379
