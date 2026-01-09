@@ -115,6 +115,17 @@
   .card-content {
     @apply p-4;
   }
+
+  /* Inputs */
+  .input-text {
+    @apply w-full bg-surface border border-border rounded-md px-3 py-2 text-sm text-text-primary 
+           focus:outline-none focus:ring-1 focus:ring-violet-500 transition-shadow placeholder:text-text-muted;
+  }
+
+  .input-select {
+    @apply w-full bg-surface border border-border rounded-md px-3 py-2 text-sm text-text-primary 
+           focus:outline-none focus:ring-1 focus:ring-violet-500 transition-shadow cursor-pointer;
+  }
 }
 
 @layer utilities {

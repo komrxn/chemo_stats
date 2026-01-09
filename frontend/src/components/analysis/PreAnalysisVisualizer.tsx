@@ -7,6 +7,7 @@ import { useTranslation } from '@/lib/i18n'
 import { cn } from '@/lib/utils'
 import type { FilePreview } from '@/types'
 import type { Data } from 'plotly.js'
+import { resolveGroupValue } from '@/lib/grouping'
 
 interface PreAnalysisVisualizerProps {
     preview: FilePreview
@@ -35,7 +36,7 @@ type PlotData =
 
 export function PreAnalysisVisualizer({ preview }: PreAnalysisVisualizerProps) {
     const { t } = useTranslation()
-    const [isOpen, setIsOpen] = useState(false)
+    const [isOpen, setIsOpen] = useState(true)
     const [selectedVar, setSelectedVar] = useState<string>('')
     const [selectedGroup, setSelectedGroup] = useState<string>('')
     const [vizMode, setVizMode] = useState<'distribution' | 'profiles'>('distribution')
@@ -54,15 +55,13 @@ export function PreAnalysisVisualizer({ preview }: PreAnalysisVisualizerProps) {
         if (vizMode === 'distribution') {
             if (!selectedVar) return null
 
-            // Find mapping for selected group
-            const groupMeta = preview.metadataColumns.find(c => c.name === selectedGroup)
-            const mapping = groupMeta?.mapping
-
             const data = preview.previewRows.map(row => {
-                const rawGroup = selectedGroup ? row[selectedGroup] : 'All'
+                const group = selectedGroup
+                    ? resolveGroupValue(row, selectedGroup, preview.metadataColumns)
+                    : 'All'
                 return {
                     val: parseFloat(row[selectedVar]),
-                    group: mapping && mapping[rawGroup] ? mapping[rawGroup] : rawGroup
+                    group
                 }
             }).filter(d => !isNaN(d.val))
 
@@ -85,14 +84,11 @@ export function PreAnalysisVisualizer({ preview }: PreAnalysisVisualizerProps) {
             // Limit to 500 samples for performance
             const samplesToUse = preview.previewRows.slice(0, 500)
 
-            // Determine unique groups for coloring
-            const groupMeta = preview.metadataColumns.find(c => c.name === selectedGroup)
-            const mapping = groupMeta?.mapping
-
             // Map samples to display groups
             const mappedSamples = samplesToUse.map(s => {
-                const rawGroup = selectedGroup ? s[selectedGroup] : 'All'
-                const displayGroup = mapping && mapping[rawGroup] ? mapping[rawGroup] : rawGroup
+                const displayGroup = selectedGroup
+                    ? resolveGroupValue(s, selectedGroup, preview.metadataColumns)
+                    : 'All'
                 return { ...s, _displayGroup: displayGroup }
             })
 
@@ -107,7 +103,7 @@ export function PreAnalysisVisualizer({ preview }: PreAnalysisVisualizerProps) {
                 vars: preview.variableNames
             }
         }
-    }, [preview.previewRows, selectedVar, selectedGroup, vizMode, preview.variableNames])
+    }, [preview.previewRows, selectedVar, selectedGroup, vizMode, preview.variableNames, preview.metadataColumns])
 
     if (!preview.variableNames.length) return null
 
@@ -138,7 +134,7 @@ export function PreAnalysisVisualizer({ preview }: PreAnalysisVisualizerProps) {
         } else {
             // Profiles Mode
             return plotData.samples.map((sample: any, i) => {
-                const groupName = (sample as any)._displayGroup || (selectedGroup ? sample[selectedGroup] : 'All')
+                const groupName = (sample as any)._displayGroup
                 const sampleId = `Sample ${i + 1}`
 
                 // Explicitly cast to any to avoid complex union type errors with react-plotly.js
@@ -149,7 +145,7 @@ export function PreAnalysisVisualizer({ preview }: PreAnalysisVisualizerProps) {
                     mode: 'lines',
                     name: String(groupName),
                     legendgroup: String(groupName),
-                    showlegend: i === 0 || (selectedGroup && plotData.samples.findIndex(s => (selectedGroup ? s[selectedGroup] : 'All') === groupName) === i),
+                    showlegend: i === 0 || (selectedGroup && plotData.samples.findIndex(s => s._displayGroup === groupName) === i),
                     line: {
                         width: 1,
                         opacity: 0.5

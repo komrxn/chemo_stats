@@ -22,6 +22,7 @@ import { LanguageToggle } from '@/components/ui/LanguageSwitcher'
 import { api } from '@/lib/api'
 import { DataPreview } from '@/components/analysis/DataPreview'
 import { PreAnalysisVisualizer } from '@/components/analysis/PreAnalysisVisualizer'
+import { DataVisualization } from '@/components/analysis/visualization'
 import { AnalysisResults } from '@/components/analysis/AnalysisResults'
 import { AnalysisSettingsDialog } from '@/components/analysis/AnalysisSettingsDialog'
 import type { FilePreview, AnovaResults } from '@/types'
@@ -249,6 +250,11 @@ export function MainContent() {
                 {/* Pre-Analysis Visualization (Phase 3) */}
                 {activeTable.preview && (
                   <PreAnalysisVisualizer preview={activeTable.preview} />
+                )}
+
+                {/* Advanced Data Visualization (Phase 7) */}
+                {activeTable.preview && (
+                  <DataVisualization preview={activeTable.preview} />
                 )}
 
                 {/* Analysis Results */}
