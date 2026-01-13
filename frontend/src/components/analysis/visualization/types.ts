@@ -37,4 +37,7 @@ export interface PlotConfig {
     yLabel: string
     showGrid: boolean
     showLegend: boolean
+
+    // Customization
+    groupMarkers?: Record<string, string>
 }

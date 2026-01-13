@@ -5,12 +5,56 @@ import { Button } from '@/components/ui/Button'
 
 interface StyleTabProps {
     config: PlotConfig
-    updateConfig: (key: keyof PlotConfig, value: any) => void
+    updateConfig: (key: keyof PlotConfig | string, value: any) => void
+    groups?: string[]
 }
 
-export function StyleTab({ config, updateConfig }: StyleTabProps) {
+const SYMBOL_OPTIONS = [
+    { value: 'circle', label: 'Circle (o)' },
+    { value: 'square', label: 'Square (s)' },
+    { value: 'diamond', label: 'Diamond (d)' },
+    { value: 'cross', label: 'Cross (x)' },
+    { value: 'x', label: 'X' },
+    { value: 'triangle-up', label: 'Triangle Up (^)' },
+    { value: 'triangle-down', label: 'Triangle Down (v)' },
+    { value: 'star', label: 'Star' },
+    { value: 'hexagon', label: 'Hexagon' },
+]
+
+export function StyleTab({ config, updateConfig, groups }: StyleTabProps) {
+
+    // Helper to update specific group marker
+    const updateGroupMarker = (group: string, symbol: string) => {
+        const newMarkers = { ...config.groupMarkers, [group]: symbol }
+        updateConfig('groupMarkers', newMarkers)
+    }
+
     return (
         <div className="space-y-4">
+            {/* If we have groups, allow per-group marker customization */}
+            {groups && groups.length > 0 && ['scatter', 'line', 'stem', 'box'].includes(config.type) && (
+                <ControlGroup label="Group Markers" icon={Type}>
+                    <p className="text-[10px] text-text-muted mb-2">Override markers for specific groups</p>
+                    <div className="space-y-2">
+                        {groups.map(g => (
+                            <div key={g} className="flex items-center justify-between gap-2">
+                                <span className="text-xs truncate flex-1" title={g}>{g}</span>
+                                <select
+                                    className="input-select w-32 py-1 text-xs"
+                                    value={config.groupMarkers?.[g] || ''}
+                                    onChange={e => updateGroupMarker(g, e.target.value)}
+                                >
+                                    <option value="">Default</option>
+                                    {SYMBOL_OPTIONS.map(opt => (
+                                        <option key={opt.value} value={opt.value}>{opt.label}</option>
+                                    ))}
+                                </select>
+                            </div>
+                        ))}
+                    </div>
+                </ControlGroup>
+            )}
+
             {/* --- BOX PLOT SPECIFIC --- */}
             {config.type === 'box' && (
                 <ControlGroup label="Box Options" icon={Sliders}>
@@ -45,6 +89,7 @@ export function StyleTab({ config, updateConfig }: StyleTabProps) {
                 <>
                     <ControlGroup label="Marker Symbol" icon={Type}>
                         <select className="input-select" value={config.markerSymbol} onChange={e => updateConfig('markerSymbol', e.target.value)}>
+                            <option value="auto">Auto (Cycle by Group)</option>
                             <option value="circle">Circle (o)</option>
                             <option value="square">Square (s)</option>
                             <option value="diamond">Diamond (d)</option>

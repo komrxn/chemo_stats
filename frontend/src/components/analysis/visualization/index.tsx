@@ -43,6 +43,14 @@ export function DataVisualization({ preview }: DataVisualizationProps) {
 
 
     // --- Data Generation Logic ---
+    // --- Groups Calculation ---
+    // Extract groups so they can be passed to UI and used for generation
+    const groups = useMemo(() => {
+        if (!preview.previewRows || !config.groupVariable) return []
+        const getGroup = (row: any) => resolveGroupValue(row, config.groupVariable, preview.metadataColumns)
+        return [...new Set(preview.previewRows.map(r => String(getGroup(r))))].sort()
+    }, [preview.previewRows, config.groupVariable])
+
     // --- Data Generation Logic ---
     const { plotData, allValues } = useMemo(() => {
         if (!preview.previewRows || !config.xVariable) return { plotData: [], allValues: [] }
@@ -50,7 +58,7 @@ export function DataVisualization({ preview }: DataVisualizationProps) {
 
         const rows = preview.previewRows
 
-        // Helper to get group
+        // Helper to get group (duplicated slightly but needed for row filtering efficiency or we could map rows to groups first)
         const getGroup = (row: any) => {
             if (!config.groupVariable) return 'Data'
             return resolveGroupValue(row, config.groupVariable, preview.metadataColumns)
@@ -80,19 +88,20 @@ export function DataVisualization({ preview }: DataVisualizationProps) {
         }
 
         // --- OTHER PLOTS ---
-        const groups = [...new Set(rows.map(r => getGroup(r)))].sort()
+        // If no grouping variable, treat as one group "Data"
+        const currentGroups = config.groupVariable ? groups : ['Data']
         const collectedValues: number[] = []
 
-        const traces = groups.map(group => {
-            const groupRows = rows.filter(r => getGroup(r) === group)
+        const traces = currentGroups.map((group, i) => {
+            const groupRows = rows.filter(r => String(getGroup(r)) === group)
             const x = groupRows.map(r => r[config.xVariable])
             const y = config.type !== 'histogram' ? groupRows.map(r => parseFloat(r[config.yVariable])) : []
 
-            const params = { config, x, y, groupName: String(group) }
+            const markerOverride = config.groupMarkers?.[group]
+            const params = { config, x, y, groupName: group, index: i, markerSymbolOverride: markerOverride }
 
             // Collect values for stats
             if (config.type === 'histogram') {
-                // For histogram, we analyze the distribution of X (or Y if horizontal)
                 const vals = x.map(v => parseFloat(v)).filter(v => !isNaN(v))
                 collectedValues.push(...vals)
             } else {
@@ -105,14 +114,14 @@ export function DataVisualization({ preview }: DataVisualizationProps) {
             if (config.type === 'stem') return generateStemTrace(params)
             if (config.type === 'box') return generateBoxTrace(params)
             if (config.type === 'histogram') {
-                return generateHistogramTrace({ config, x: config.orientation === 'v' ? x : y, groupName: String(group) })
+                return generateHistogramTrace({ config, x: config.orientation === 'v' ? x : y, groupName: group }) // Histogram markers usually uniform
             }
 
             return {} as Data
         })
 
         return { plotData: traces, allValues: collectedValues }
-    }, [preview.previewRows, config])
+    }, [preview.previewRows, config, groups])
 
 
     // --- Layout Generation ---
@@ -179,6 +188,7 @@ export function DataVisualization({ preview }: DataVisualizationProps) {
                                 config={config}
                                 updateConfig={updateConfig}
                                 statsData={allValues}
+                                groups={groups}
                             />
                             <div className="flex-1 relative">
                                 <PlotPreview plotData={plotData} layout={layout} />

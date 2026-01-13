@@ -1,14 +1,29 @@
 import type { Data } from 'plotly.js'
 import { PlotConfig } from '../types'
 
+const MARKER_SYMBOLS = [
+    'circle', 'square', 'diamond', 'cross', 'x',
+    'triangle-up', 'triangle-down', 'pentagon', 'hexagon', 'star'
+]
+
 interface GenerateTraceParams {
     config: PlotConfig
     x: any[]
     y: any[]
     groupName: string
+    index?: number
+    markerSymbolOverride?: string
 }
 
-export function generateScatterTrace({ config, x, y, groupName }: GenerateTraceParams): Partial<Data> {
+export function generateScatterTrace({ config, x, y, groupName, index = 0, markerSymbolOverride }: GenerateTraceParams): Partial<Data> {
+    let symbolBase = config.markerSymbol
+
+    if (markerSymbolOverride) {
+        symbolBase = markerSymbolOverride
+    } else if (config.markerSymbol === 'auto') {
+        symbolBase = MARKER_SYMBOLS[index % MARKER_SYMBOLS.length]
+    }
+
     return {
         name: groupName,
         opacity: config.alpha,
@@ -16,7 +31,7 @@ export function generateScatterTrace({ config, x, y, groupName }: GenerateTraceP
         mode: 'markers',
         type: 'scattergl',
         marker: {
-            symbol: config.markerSymbol + (config.markerFilled ? '' : '-open'),
+            symbol: symbolBase + (config.markerFilled ? '' : '-open'),
             size: config.markerSize,
             color: config.markerColor === 'auto' ? undefined : config.markerColor,
             line: {
@@ -27,7 +42,15 @@ export function generateScatterTrace({ config, x, y, groupName }: GenerateTraceP
     }
 }
 
-export function generateLineTrace({ config, x, y, groupName }: GenerateTraceParams): Partial<Data> {
+export function generateLineTrace({ config, x, y, groupName, index = 0, markerSymbolOverride }: GenerateTraceParams): Partial<Data> {
+    let symbolBase = config.markerSymbol
+
+    if (markerSymbolOverride) {
+        symbolBase = markerSymbolOverride
+    } else if (config.markerSymbol === 'auto') {
+        symbolBase = MARKER_SYMBOLS[index % MARKER_SYMBOLS.length]
+    }
+
     return {
         name: groupName,
         opacity: config.alpha,
@@ -40,7 +63,7 @@ export function generateLineTrace({ config, x, y, groupName }: GenerateTracePara
             color: config.markerColor === 'auto' ? undefined : config.markerColor
         },
         marker: {
-            symbol: config.markerSymbol,
+            symbol: symbolBase + (config.markerFilled ? '' : '-open'),
             size: config.markerSize,
         }
     }
@@ -63,7 +86,15 @@ export function generateHistogramTrace({ config, x, groupName }: Omit<GenerateTr
     } as any as Data
 }
 
-export function generateBoxTrace({ config, x, groupName }: GenerateTraceParams): Partial<Data> {
+export function generateBoxTrace({ config, x, groupName, index = 0, markerSymbolOverride }: GenerateTraceParams): Partial<Data> {
+    let symbolBase = config.markerSymbol
+
+    if (markerSymbolOverride) {
+        symbolBase = markerSymbolOverride
+    } else if (config.markerSymbol === 'auto') {
+        symbolBase = MARKER_SYMBOLS[index % MARKER_SYMBOLS.length]
+    }
+
     return {
         name: groupName,
         // Box plot orientation: 'h' = x is values, y is group. 'v' = y is values, x is group.
@@ -80,7 +111,7 @@ export function generateBoxTrace({ config, x, groupName }: GenerateTraceParams):
         marker: {
             color: config.markerColor === 'auto' ? undefined : config.markerColor,
             size: config.markerSize, // outlier size
-            symbol: config.markerSymbol
+            symbol: symbolBase // Box plot markers don't typically support open/closed suffix same way, but let's try or stick to base
         },
         line: {
             width: config.lineWidth
@@ -104,7 +135,15 @@ export function generatePieTrace({ config, labels, values }: { config: PlotConfi
     } as any
 }
 
-export function generateStemTrace({ config, x, y, groupName }: GenerateTraceParams): Partial<Data> {
+export function generateStemTrace({ config, x, y, groupName, index = 0, markerSymbolOverride }: GenerateTraceParams): Partial<Data> {
+    let symbolBase = config.markerSymbol
+
+    if (markerSymbolOverride) {
+        symbolBase = markerSymbolOverride
+    } else if (config.markerSymbol === 'auto') {
+        symbolBase = MARKER_SYMBOLS[index % MARKER_SYMBOLS.length]
+    }
+
     // Stem plot: Scatter markers + ErrorBar Hack for lines to zero
     return {
         x: x,
@@ -114,7 +153,7 @@ export function generateStemTrace({ config, x, y, groupName }: GenerateTracePara
         name: groupName,
         opacity: config.alpha,
         marker: {
-            symbol: config.markerSymbol,
+            symbol: symbolBase + (config.markerFilled ? '' : '-open'),
             size: config.markerSize,
             color: config.markerColor === 'auto' ? undefined : config.markerColor,
             line: {

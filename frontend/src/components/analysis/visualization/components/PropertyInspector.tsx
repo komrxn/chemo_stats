@@ -13,9 +13,10 @@ interface PropertyInspectorProps {
     config: PlotConfig
     updateConfig: (key: keyof PlotConfig | string, value: any) => void
     statsData?: number[]
+    groups?: string[]
 }
 
-export function PropertyInspector({ preview, config, updateConfig, statsData }: PropertyInspectorProps) {
+export function PropertyInspector({ preview, config, updateConfig, statsData, groups }: PropertyInspectorProps) {
     const [activeTab, setActiveTab] = useState<'data' | 'style' | 'layout'>('data')
 
     const TabButton = ({ id, label }: { id: typeof activeTab, label: string }) => (
@@ -42,7 +43,7 @@ export function PropertyInspector({ preview, config, updateConfig, statsData }: 
             {/* Tab Content */}
             <div className="flex-1 overflow-y-auto p-4 space-y-6">
                 {activeTab === 'data' && <DataTab preview={preview} config={config} updateConfig={updateConfig} />}
-                {activeTab === 'style' && <StyleTab config={config} updateConfig={updateConfig} />}
+                {activeTab === 'style' && <StyleTab config={config} updateConfig={updateConfig} groups={groups} />}
                 {activeTab === 'layout' && <LayoutTab config={config} updateConfig={updateConfig} />}
             </div>
 
