@@ -1,0 +1,339 @@
+/* ============================================
+   Table Editor - Dark Theme Overrides
+   ============================================ */
+
+/* Page layout for separate window */
+.table-editor-page {
+    width: 100vw;
+    height: 100vh;
+    background: var(--surface);
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;
+}
+
+.table-editor-page-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 12px 20px;
+    border-bottom: 1px solid var(--border);
+    background: var(--surface-raised);
+    flex-shrink: 0;
+}
+
+.table-editor-page-content {
+    flex: 1;
+    min-height: 0;
+    position: relative;
+    overflow: hidden;
+}
+
+/* Loading state */
+.table-editor-loading {
+    width: 100vw;
+    height: 100vh;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: 16px;
+    background: var(--surface);
+    color: var(--text-secondary);
+}
+
+/* Error state */
+.table-editor-error {
+    width: 100vw;
+    height: 100vh;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: 16px;
+    background: var(--surface);
+    text-align: center;
+}
+
+.table-editor-error h2 {
+    font-size: 20px;
+    font-weight: 600;
+    color: var(--text-primary);
+    margin: 0;
+}
+
+.table-editor-error p {
+    color: var(--text-secondary);
+    margin: 0;
+}
+
+/* Full-screen overlay (for embedded mode) */
+.table-editor-overlay {
+    position: fixed;
+    inset: 0;
+    z-index: 100;
+    background: rgba(0, 0, 0, 0.85);
+    backdrop-filter: blur(8px);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    animation: fadeIn 0.2s ease-out;
+}
+
+@keyframes fadeIn {
+    from {
+        opacity: 0;
+    }
+
+    to {
+        opacity: 1;
+    }
+}
+
+/* Main container */
+.table-editor-container {
+    width: calc(100vw - 48px);
+    height: calc(100vh - 48px);
+    max-width: 1800px;
+    background: var(--surface-raised);
+    border: 1px solid var(--border);
+    border-radius: 16px;
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;
+    box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.5);
+    animation: slideIn 0.3s ease-out;
+}
+
+@keyframes slideIn {
+    from {
+        opacity: 0;
+        transform: scale(0.95) translateY(10px);
+    }
+
+    to {
+        opacity: 1;
+        transform: scale(1) translateY(0);
+    }
+}
+
+/* Header */
+.table-editor-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 16px 20px;
+    border-bottom: 1px solid var(--border);
+    background: var(--surface-overlay);
+    flex-shrink: 0;
+}
+
+.table-editor-title {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    font-size: 16px;
+    font-weight: 600;
+    color: var(--text-primary);
+}
+
+.table-editor-unsaved-badge {
+    font-size: 11px;
+    font-weight: 500;
+    padding: 4px 8px;
+    background: rgba(251, 191, 36, 0.15);
+    color: #fbbf24;
+    border-radius: 6px;
+    border: 1px solid rgba(251, 191, 36, 0.3);
+}
+
+.table-editor-actions {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+}
+
+/* Content area */
+.table-editor-content {
+    flex: 1;
+    min-height: 0;
+    position: relative;
+    overflow: hidden;
+}
+
+/* ============================================
+   FortuneSheet Dark Theme Overrides
+   ============================================ */
+
+/* Main container */
+.fortune-sheet-container {
+    background: var(--surface) !important;
+}
+
+/* Toolbar */
+.fortune-sheet-toolbar {
+    background: var(--surface-overlay) !important;
+    border-bottom: 1px solid var(--border) !important;
+    padding: 6px 12px !important;
+}
+
+.fortune-sheet-toolbar button,
+.fortune-sheet-toolbar .luckysheet-toolbar-button {
+    color: var(--text-secondary) !important;
+    background: transparent !important;
+    border: 1px solid transparent !important;
+    border-radius: 6px !important;
+    transition: all 0.15s ease !important;
+}
+
+.fortune-sheet-toolbar button:hover,
+.fortune-sheet-toolbar .luckysheet-toolbar-button:hover {
+    background: var(--surface-raised) !important;
+    border-color: var(--border) !important;
+    color: var(--text-primary) !important;
+}
+
+.fortune-sheet-toolbar select,
+.fortune-sheet-toolbar input {
+    background: var(--surface) !important;
+    color: var(--text-primary) !important;
+    border: 1px solid var(--border) !important;
+    border-radius: 6px !important;
+}
+
+/* Formula bar */
+.fortune-sheet-formula-bar,
+.luckysheet-formula-bar-inner,
+.luckysheet-input-box {
+    background: var(--surface-overlay) !important;
+    border-bottom: 1px solid var(--border) !important;
+    color: var(--text-primary) !important;
+}
+
+.luckysheet-input-box textarea,
+.luckysheet-input-box input {
+    color: var(--text-primary) !important;
+    caret-color: var(--accent) !important;
+}
+
+/* Cell grid */
+.luckysheet-grid-container,
+.luckysheet-cell-main {
+    background: var(--surface) !important;
+}
+
+/* Row and column headers */
+.luckysheet-cols-h-cells,
+.luckysheet-rows-h,
+.luckysheet-left-top {
+    background: var(--surface-overlay) !important;
+    color: var(--text-secondary) !important;
+    border-color: var(--border) !important;
+}
+
+.luckysheet-cols-h-cells .luckysheet-cols-h-cells-c,
+.luckysheet-rows-h .luckysheet-rows-h-c {
+    border-color: var(--border) !important;
+    color: var(--text-muted) !important;
+    font-size: 11px !important;
+}
+
+.luckysheet-cols-h-cells .luckysheet-cols-h-cells-c:hover,
+.luckysheet-rows-h .luckysheet-rows-h-c:hover {
+    background: var(--surface-raised) !important;
+    color: var(--text-primary) !important;
+}
+
+/* Cells */
+.luckysheet-cell-main table td {
+    border-color: var(--border) !important;
+    color: var(--text-primary) !important;
+    font-family: 'JetBrains Mono', 'SF Mono', monospace !important;
+    font-size: 12px !important;
+}
+
+/* Selection */
+.luckysheet-selection-copy,
+.luckysheet-cell-selected {
+    border-color: var(--accent) !important;
+}
+
+.luckysheet-cell-selected-focus {
+    border: 2px solid var(--accent) !important;
+    background: rgba(99, 102, 241, 0.1) !important;
+}
+
+.luckysheet-selection-multi {
+    background: rgba(99, 102, 241, 0.15) !important;
+    border-color: var(--accent) !important;
+}
+
+/* Scrollbars */
+.luckysheet-scrollbar-x,
+.luckysheet-scrollbar-y {
+    background: var(--surface-overlay) !important;
+}
+
+.luckysheet-scrollbar-x .luckysheet-scrollbar-thumbX,
+.luckysheet-scrollbar-y .luckysheet-scrollbar-thumbY {
+    background: var(--border) !important;
+    border-radius: 4px !important;
+}
+
+.luckysheet-scrollbar-x .luckysheet-scrollbar-thumbX:hover,
+.luckysheet-scrollbar-y .luckysheet-scrollbar-thumbY:hover {
+    background: var(--text-muted) !important;
+}
+
+/* Context menu */
+.luckysheet-rightclick-menu,
+.luckysheet-submenu {
+    background: var(--surface-raised) !important;
+    border: 1px solid var(--border) !important;
+    border-radius: 8px !important;
+    box-shadow: 0 10px 25px rgba(0, 0, 0, 0.4) !important;
+    padding: 4px !important;
+}
+
+.luckysheet-rightclick-menu .luckysheet-cols-menuitem,
+.luckysheet-submenu .luckysheet-cols-menuitem {
+    color: var(--text-primary) !important;
+    border-radius: 4px !important;
+    margin: 1px 0 !important;
+}
+
+.luckysheet-rightclick-menu .luckysheet-cols-menuitem:hover,
+.luckysheet-submenu .luckysheet-cols-menuitem:hover {
+    background: var(--surface-overlay) !important;
+}
+
+.luckysheet-rightclick-menu .luckysheet-cols-menuitem-line {
+    border-color: var(--border) !important;
+}
+
+/* Dropdown menus */
+.luckysheet-toolbar-select-menusub,
+.luckysheet-toolbar-menu {
+    background: var(--surface-raised) !important;
+    border: 1px solid var(--border) !important;
+    border-radius: 8px !important;
+}
+
+/* Cell editing */
+.luckysheet-input-box-inner {
+    background: var(--surface) !important;
+    border: 2px solid var(--accent) !important;
+    border-radius: 2px !important;
+}
+
+/* Hide sheet tabs since we only have one sheet */
+.luckysheet-sheet-area {
+    display: none !important;
+}
+
+/* Status bar */
+.luckysheet-stat-area {
+    background: var(--surface-overlay) !important;
+    border-top: 1px solid var(--border) !important;
+    color: var(--text-secondary) !important;
+}

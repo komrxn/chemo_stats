@@ -5,6 +5,7 @@ import { RegisterPage } from '@/pages/RegisterPage'
 import { ProtectedRoute } from '@/components/auth/ProtectedRoute'
 import { ErrorBoundary } from '@/components/ErrorBoundary'
 import { AdminPage } from '@/pages/AdminPage'
+import { TableEditorPage } from '@/components/analysis/TableEditor'
 
 export default function App() {
   return (
@@ -13,6 +14,7 @@ export default function App() {
         <Routes>
           <Route path="/login" element={<LoginPage />} />
           <Route path="/register" element={<RegisterPage />} />
+          <Route path="/table-editor" element={<TableEditorPage />} />
 
           <Route element={<ProtectedRoute />}>
             <Route path="/admin" element={<AdminPage />} />

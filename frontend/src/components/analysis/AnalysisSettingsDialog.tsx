@@ -74,6 +74,15 @@ export function AnalysisSettingsDialog({
   const handleRunAnalysis = async () => {
     if (!activeProject || !activeTable?.file) return
 
+    console.log('[ANOVA] Starting analysis with file:', {
+      fileName: activeTable.file.name,
+      fileSize: activeTable.file.size,
+      fileType: activeTable.file.type,
+      tableId: activeTable.id,
+      tableName: activeTable.name,
+      classColumn
+    })
+
     setRunning(true)
 
     updateTableAnalysis(activeProject.id, activeTable.id, {
@@ -85,6 +94,7 @@ export function AnalysisSettingsDialog({
 
     try {
       if (method === 'anova') {
+        console.log('[ANOVA] Calling api.runAnova with file:', activeTable.file.name)
         const response = await api.runAnova(activeTable.file, {
           classColumn,
           fdrThreshold: parseFloat(fdrThreshold),

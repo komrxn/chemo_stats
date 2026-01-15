@@ -61,6 +61,7 @@ interface AppState {
   renameTable: (projectId: string, tableId: string, name: string, folderId?: string | null) => void
   setActiveTable: (id: string | null) => void
   updateTablePreview: (projectId: string, tableId: string, preview: FilePreview, folderId?: string | null) => void
+  updateTableFile: (projectId: string, tableId: string, file: File, folderId?: string | null) => void
   updateTableAnalysis: (projectId: string, tableId: string, analysis: AnalysisState, folderId?: string | null) => void
 
   toggleLeftSidebar: () => void
@@ -331,6 +332,16 @@ export const useAppStore = create<AppState>((set) => ({
       projects: state.projects.map((p) =>
         p.id === projectId
           ? updateTableInProject(p, tableId, folderId, (t) => ({ ...t, preview }))
+          : p
+      ),
+    }))
+  },
+
+  updateTableFile: (projectId, tableId, file, folderId = null) => {
+    set((state) => ({
+      projects: state.projects.map((p) =>
+        p.id === projectId
+          ? updateTableInProject(p, tableId, folderId, (t) => ({ ...t, file }))
           : p
       ),
     }))

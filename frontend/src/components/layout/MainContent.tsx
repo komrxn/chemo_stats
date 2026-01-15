@@ -39,6 +39,7 @@ export function MainContent() {
   const createProject = useAppStore((s) => s.createProject)
   const createTable = useAppStore((s) => s.createTable)
   const updateTablePreview = useAppStore((s) => s.updateTablePreview)
+  const updateTableFile = useAppStore((s) => s.updateTableFile)
 
   const [uploading, setUploading] = useState(false)
   const [settingsOpen, setSettingsOpen] = useState(false)
@@ -121,6 +122,113 @@ export function MainContent() {
       }
     },
     [activeProject, createProject, createTable, updateTablePreview]
+  )
+
+  // Handler for when raw data is updated from TableEditor
+  const handleUpdateRawData = useCallback(
+    async (tableId: string, newRawData: string[][]) => {
+      console.log('[TableEditor] handleUpdateRawData called', { tableId, rowCount: newRawData?.length })
+
+      if (!activeProject) {
+        console.error('[TableEditor] No active project')
+        return
+      }
+
+      if (!activeTable?.preview?.rawPreview) {
+        console.error('[TableEditor] No rawPreview found in activeTable')
+        return
+      }
+
+      try {
+        console.log('[TableEditor] Converting to CSV with ORIGINAL column names...')
+
+        // CRITICAL: Use ORIGINAL column names from rawPreview[0] to preserve backend mappings
+        // The edited data (newRawData) has processed column names like "Diet",
+        // but backend expects original names like "Diet 1=NND; 2=ADD" for ANOVA to work
+        const originalHeaders = activeTable.preview.rawPreview[0]
+        const editedDataRows = newRawData.slice(1)  // Skip processed headers
+
+        console.log('[TableEditor] Headers mapping:', {
+          original: originalHeaders.slice(0, 5),
+          processed: newRawData[0].slice(0, 5)
+        })
+
+        // Create CSV with original headers but edited data values
+        const csvRows = [originalHeaders, ...editedDataRows]
+
+        const csvContent = csvRows
+          .map(row => row.map(cell => {
+            // Escape quotes and wrap in quotes if contains comma or quote
+            const escaped = String(cell ?? '').replace(/"/g, '""')
+            return escaped.includes(',') || escaped.includes('"') || escaped.includes('\n')
+              ? `"${escaped}"`
+              : escaped
+          }).join(','))
+          .join('\n')
+
+        console.log('[TableEditor] CSV created with original headers, length:', csvContent.length)
+
+        // Create a File blob from CSV
+        const blob = new Blob([csvContent], { type: 'text/csv' })
+        const file = new File([blob], 'edited_data.csv', { type: 'text/csv' })
+
+        console.log('[TableEditor] Sending to backend API...')
+
+        // Send to backend API for parsing (same as initial upload)
+        const preview = await api.previewFile(file)
+
+        console.log('[TableEditor] Backend response:', {
+          numSamples: preview.num_samples,
+          numVariables: preview.num_variables,
+        })
+
+        // Convert API response to FilePreview format
+        const filePreview: FilePreview = {
+          triggerFound: preview.trigger_found,
+          triggerColumn: preview.trigger_column,
+          metadataColumns: preview.metadata_columns.map((col) => ({
+            name: col.name,
+            uniqueCount: col.unique_count,
+            sampleValues: col.sample_values,
+          })),
+          variableNames: preview.variable_names,
+          numSamples: preview.num_samples,
+          numVariables: preview.num_variables,
+          previewRows: preview.preview_rows,
+          rawPreview: preview.raw_preview,
+        }
+
+        // Update both preview AND file
+        console.log('[TableEditor] Updating table preview and file', {
+          projectId: activeProject.id,
+          tableId,
+          fileName: file.name,
+          fileSize: file.size,
+          fileType: file.type
+        })
+
+        updateTablePreview(activeProject.id, tableId, filePreview)
+        updateTableFile(activeProject.id, tableId, file)
+
+        console.log('[TableEditor] Table preview and file updated successfully')
+        console.log('[TableEditor] New file blob created:', {
+          name: file.name,
+          size: file.size,
+          type: file.type,
+          lastModified: file.lastModified
+        })
+
+        toast.success(t('data.tableUpdated'), {
+          description: `${filePreview.numSamples} ${t('data.samples')} × ${filePreview.numVariables} ${t('data.variables')}`,
+        })
+      } catch (error) {
+        console.error('[TableEditor] Failed to update table data:', error)
+        toast.error('Failed to update table', {
+          description: error instanceof Error ? error.message : 'Unknown error',
+        })
+      }
+    },
+    [activeProject, activeTable, updateTablePreview, updateTableFile, t]
   )
 
   const { getRootProps, getInputProps, isDragActive } = useDropzone({
@@ -244,7 +352,11 @@ export function MainContent() {
 
                 {/* Data Preview */}
                 {activeTable.preview && (
-                  <DataPreview preview={activeTable.preview} />
+                  <DataPreview
+                    preview={activeTable.preview}
+                    tableId={activeTable.id}
+                    onUpdateRawData={handleUpdateRawData}
+                  />
                 )}
 
                 {/* Pre-Analysis Visualization (Phase 3) */}

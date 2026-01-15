@@ -3,6 +3,7 @@ File Parser Utility - V2.0
 Handles CSV and Excel file parsing with DATA trigger support
 """
 import logging
+import re
 from io import BytesIO
 
 import numpy as np
@@ -10,6 +11,122 @@ import pandas as pd
 from fastapi import HTTPException, UploadFile
 
 logger = logging.getLogger(__name__)
+
+# Regex pattern for "Name Val=Label;Val=Label" format
+# Matches: "Gender 1=Male; 0=Female" or "Season 1=Spring; 2=Summer"
+MAPPING_PATTERN = re.compile(r"(?P<name>.+?)\s+(?P<mapping>(\d+=.+?(;|$))+)")
+
+
+def apply_column_name_mapping(df: pd.DataFrame) -> tuple[pd.DataFrame, dict]:
+    """
+    Apply column name mapping for columns with format "Name Val=Label;Val=Label"
+    Converts "Diet 1=NND; 2=ADD" -> "Diet"
+    
+    Args:
+        df: DataFrame with potentially long column names
+    
+    Returns:
+        (df_with_renamed_columns, name_mapping_dict)
+        name_mapping_dict: {"original_name": "clean_name", ...}
+    """
+    name_mapping = {}
+    
+    for col in df.columns:
+        col_str = str(col).strip()
+        match = MAPPING_PATTERN.match(col_str)
+        if match:
+            clean_name = match.group("name").strip()
+            name_mapping[col] = clean_name
+            logger.info(f"✅ Column mapped: '{col_str}' -> '{clean_name}'")
+        else:
+            name_mapping[col] = col_str
+    
+    df = df.rename(columns=name_mapping)
+    return df, name_mapping
+
+
+def classify_column(col_name: str, data: pd.Series, unique_count: int) -> str:
+    """
+    Classify column type using heuristics.
+    
+    Returns:
+        'skip' - ID/index columns that should be skipped
+        'continuous_bin' - continuous data that should be binned into quantiles
+        'metadata' - categorical data to use as-is
+    """
+    name_lower = col_name.lower()
+    
+    # ID patterns - always skip
+    id_patterns = ['id', 'index', 'row', 'sample_id', 'patient', 'subject', 'code', 'number']
+    for pattern in id_patterns:
+        if pattern in name_lower:
+            # Exception: 'individual id' with moderate unique values might be useful
+            if unique_count < 50 and 'individual' not in name_lower:
+                continue
+            return 'skip'
+    
+    # If too many unique values (>50), check if it's continuous data worth binning
+    if unique_count > 50:
+        # Continuous data patterns - should bin
+        continuous_patterns = ['age', 'weight', 'height', 'bw', 'bmi', 'kg', 'year', 
+                               'time', 'duration', 'score', 'level', 'days', 'months']
+        for pattern in continuous_patterns:
+            if pattern in name_lower:
+                return 'continuous_bin'
+        
+        # Check if numeric - likely continuous data
+        if pd.api.types.is_numeric_dtype(data):
+            # Check if it looks like continuous data (not just many categories)
+            try:
+                numeric_data = pd.to_numeric(data, errors='coerce')
+                if numeric_data.notna().sum() > len(data) * 0.8:  # 80%+ numeric
+                    return 'continuous_bin'
+            except:
+                pass
+        
+        # Default: skip if too many unique and no pattern matched
+        return 'skip'
+    
+    return 'metadata'
+
+
+def create_quantile_bins(data: pd.Series, n_bins: int = 5) -> tuple[pd.Series, list]:
+    """
+    Convert continuous data to quantile groups.
+    
+    Args:
+        data: Numeric series
+        n_bins: Number of bins (default 5 = quintiles)
+    
+    Returns:
+        (binned_series, bin_labels)
+    """
+    try:
+        # Convert to numeric
+        numeric_data = pd.to_numeric(data, errors='coerce')
+        
+        # Create quantile labels
+        labels = [f"Q{i+1}" for i in range(n_bins)]
+        
+        # Apply quantile binning (handles duplicates)
+        binned = pd.qcut(numeric_data, q=n_bins, labels=labels, duplicates='drop')
+        
+        # Get actual bin edges for display
+        _, bin_edges = pd.qcut(numeric_data, q=n_bins, retbins=True, duplicates='drop')
+        
+        # Create descriptive labels
+        actual_labels = []
+        for i in range(len(bin_edges) - 1):
+            low = round(bin_edges[i], 1)
+            high = round(bin_edges[i + 1], 1)
+            actual_labels.append(f"Q{i+1} ({low}-{high})")
+        
+        logger.info(f"📊 Created {len(actual_labels)} quantile bins: {actual_labels}")
+        
+        return binned, actual_labels
+    except Exception as e:
+        logger.warning(f"Failed to create bins: {e}")
+        return data, []
 
 
 async def preview_file(file: UploadFile) -> dict:
@@ -313,12 +430,38 @@ def extract_metadata_columns(df: pd.DataFrame, trigger_idx: int) -> list[dict]:
         
         # Get unique values
         unique_vals = col_data.dropna().unique()
+        unique_count = len(unique_vals)
         
-        # Skip if too many unique values (likely ID column)
-        if len(unique_vals) > 50:
-            logger.info(f"Skipping '{col_name_raw}' - too many unique values ({len(unique_vals)})")
+        # Use smart classification
+        col_type = classify_column(clean_name, col_data, unique_count)
+        
+        if col_type == 'skip':
+            logger.info(f"⏭️ Skipping '{col_name_raw}' - classified as ID column ({unique_count} unique values)")
             continue
         
+        elif col_type == 'continuous_bin':
+            # Bin continuous data into quantiles
+            binned_data, bin_labels = create_quantile_bins(col_data, n_bins=5)
+            
+            if bin_labels:  # Binning succeeded
+                logger.info(f"📊 Binning '{clean_name}' into {len(bin_labels)} quantile groups")
+                
+                metadata_cols.append({
+                    "name": clean_name,
+                    "original_name": col_name_raw,
+                    "unique_count": len(bin_labels),
+                    "sample_values": bin_labels,
+                    "mapping": None,
+                    "binned": True,  # Flag for frontend
+                    "original_unique_count": unique_count
+                })
+                continue
+            else:
+                # Binning failed, skip
+                logger.warning(f"⏭️ Skipping '{col_name_raw}' - binning failed")
+                continue
+        
+        # Regular metadata column
         # Sort sample values
         try:
             sample_values = sorted(unique_vals.tolist()[:10])
@@ -329,13 +472,14 @@ def extract_metadata_columns(df: pd.DataFrame, trigger_idx: int) -> list[dict]:
         
         metadata_cols.append({
             "name": clean_name,
-            "original_name": col_name_raw, # Keep reference
-            "unique_count": len(unique_vals),
+            "original_name": col_name_raw,
+            "unique_count": unique_count,
             "sample_values": sample_values,
-            "mapping": mapping # Include the parsed mapping
+            "mapping": mapping,
+            "binned": False
         })
         
-        logger.info(f"Metadata column: '{clean_name}' ({len(unique_vals)} unique values)")
+        logger.info(f"Metadata column: '{clean_name}' ({unique_count} unique values)")
     
     return metadata_cols
 
@@ -438,6 +582,10 @@ async def parse_uploaded_file(
         df = df.dropna(how='all')
         
         logger.info(f"Loaded file: {df.shape[0]} rows × {df.shape[1]} columns, header at row {header_row_idx}")
+        
+        # *** CRITICAL: Apply column name mapping ***
+        # This converts "Diet 1=NND; 2=ADD" -> "Diet" so class_column lookup works
+        df, _ = apply_column_name_mapping(df)
         
         # Find DATA trigger in columns
         trigger_idx = None

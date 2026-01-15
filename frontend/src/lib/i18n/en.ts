@@ -53,6 +53,13 @@ export const en = {
   'data.rows': 'rows',
   'data.columns': 'columns',
   'data.scrollHint': 'Scroll horizontally and vertically to see all data',
+  'data.editTable': 'Edit Table',
+  'data.saveChanges': 'Save Changes',
+  'data.unsavedChanges': 'Unsaved Changes',
+  'data.unsavedChangesDesc': 'You have unsaved changes. Would you like to discard them?',
+  'data.discardChanges': 'Discard',
+  'data.continueEditing': 'Continue Editing',
+  'data.tableUpdated': 'Table updated',
 
   // ═══════════════════════════════════════════════════════════════════════════
   // Analysis Settings
