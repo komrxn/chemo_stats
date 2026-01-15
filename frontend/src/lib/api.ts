@@ -19,6 +19,13 @@ axiosInstance.interceptors.request.use((config) => {
 axiosInstance.interceptors.response.use(
   <T = any>(response: AxiosResponse<T>) => response.data as T,
   (error) => {
+    // Handle 401 Unauthorized globally
+    if (error.response?.status === 401) {
+      // Clear auth state (logout)
+      useAuthStore.getState().logout()
+      // Optional: Redirect to login page is handled by App.tsx observing auth state
+    }
+
     const message = error.response?.data?.detail || 'Request failed'
     return Promise.reject(new Error(message))
   }
